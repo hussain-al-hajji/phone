@@ -2270,7 +2270,7 @@ const PDFE = {
       const el = document.createElement('div'); el.className = 'pp'; el.style.width = size.w + 'px'; el.style.height = size.h + 'px';
       el.innerHTML = pages[i]; host.appendChild(el); PDFE.fit(el);
       await document.fonts.ready; // ضروري قبل كل استدعاء لـ html2canvas لتفادي تشوّه الحروف العربية
-      const canvas = await window.html2canvas(el, { scale: 1.6, backgroundColor: '#ffffff', useCORS: true, logging: false });
+      const canvas = await window.html2canvas(el, { scale: 1.6, backgroundColor: '#ffffff', useCORS: true, logging: false, ignoreElements: n => n.id === 'app' || (n.classList && n.classList.contains('modal-back')) });
       const img = canvas.toDataURL('image/jpeg', 0.84);
       if (i > 0) doc.addPage(size.format, size.orientation);
       doc.addImage(img, 'JPEG', 0, 0, size.mmW, size.mmH);
