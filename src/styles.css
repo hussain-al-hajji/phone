@@ -456,3 +456,6 @@ ul,ol{margin:.3em 0;padding-inline-start:1.3em}
 .people-list{display:grid;gap:6px}
 .person{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:12px;background:var(--surface-2);font-family:var(--f-ui);font-size:14px;flex-wrap:wrap}
 .person .nm{flex:1;min-width:140px;font-weight:600}
+
+/* شاشة معتمة (زر B في جهاز المؤشر) */
+#blackout { position: fixed; inset: 0; background: #000; z-index: 9999; cursor: none; }

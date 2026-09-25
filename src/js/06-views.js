@@ -92,7 +92,24 @@ const Deck = {
   fitHeight(id) { const deck = $('[data-deck="' + id + '"]'); if (!deck) return; const s = $$('.slide', deck)[UIState.deck[id] || 0]; if (s) $('.deck-viewport', deck).style.height = s.offsetHeight + 'px'; }
 };
 window.addEventListener('resize', debounce(() => { if (Router.cur.view === 'axis') Deck.fitHeight(Router.cur.id); }, 150));
-document.addEventListener('keydown', e => { if (Router.cur.view !== 'axis' || /INPUT|TEXTAREA|SELECT/.test((e.target || {}).tagName || '')) return; if (e.key === 'ArrowLeft') Deck.move(Router.cur.id, 1); if (e.key === 'ArrowRight') Deck.move(Router.cur.id, -1); });
+// التنقل بلوحة المفاتيح وبأجهزة المؤشر (Presenter / Clicker) التي ترسل PageDown/PageUp عادةً، وبعضها أسهمًا أو مسافة.
+// الأسهم الأفقية تتبع اتجاه القراءة العربي (← التالي، → السابق)، وB أو النقطة تُعتم الشاشة كما في العروض التقديمية.
+const DECK_KEYS = { PageDown: 1, ArrowDown: 1, ArrowLeft: 1, ' ': 1, Enter: 1, PageUp: -1, ArrowUp: -1, ArrowRight: -1, Backspace: -1 };
+document.addEventListener('keydown', e => {
+  if (Router.cur.view !== 'axis' || e.ctrlKey || e.metaKey || e.altKey || $('.modal-back')) return;
+  const t = e.target || {}; if (/INPUT|TEXTAREA|SELECT/.test(t.tagName || '') || t.isContentEditable) return;
+  const blk = $('#blackout');
+  if (blk) { e.preventDefault(); blk.remove(); return; }
+  if (/^[bB.,ذز]$/.test(e.key)) { e.preventDefault(); document.body.insertAdjacentHTML('beforeend', '<div id="blackout"></div>'); return; }
+  let d = DECK_KEYS[e.key]; if (!d) return;
+  if ((e.key === ' ' || e.key === 'Enter') && /BUTTON|A/.test(t.tagName || '')) return;
+  if (e.shiftKey && e.key === ' ') d = -1;
+  e.preventDefault();
+  const deck = $('[data-deck="' + Router.cur.id + '"]'); if (!deck) return;
+  Deck.move(Router.cur.id, d);
+  const r = deck.getBoundingClientRect(); if (r.top < 0 || r.top > innerHeight * 0.35) deck.scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+document.addEventListener('click', e => { if (e.target.id === 'blackout') e.target.remove(); });
 
 // ============ صفحة التمرين ============
 const DEFAULT_STEPS = {
