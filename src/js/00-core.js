@@ -1,0 +1,185 @@
+'use strict';
+/* =====================================================================
+   التحول التجاري عبر الهاتف المحمول — تطبيق تفاعلي مباشر
+   ملف واحد قائم بذاته (Vanilla JS) + Firebase Realtime Database
+   ===================================================================== */
+
+// ---------------------------------------------------------------------
+// 1) إعدادات Firebase — التفعيل الحقيقي يعتمد على وجود databaseURL فقط
+// ---------------------------------------------------------------------
+const firebaseConfig = {
+  databaseURL: "https://mobile-d6aea-default-rtdb.firebaseio.com/"
+};
+// ?demo=1 في الرابط يفرض وضع المحاكاة المحلي (للمعاينة دون لمس قاعدة البيانات الحقيقية)
+const FORCE_DEMO = (function () { try { return /[?&]demo=1/.test(location.search); } catch (e) { return false; } })();
+const DEMO_MODE = FORCE_DEMO || !firebaseConfig.databaseURL || firebaseConfig.databaseURL.indexOf('PASTE') !== -1 || typeof firebase === 'undefined';
+
+const ADMIN_PASS = '3719';
+const BADGE_THRESHOLD = 0.8;          // 80% لفتح الوسام وتهنئة الإنجاز
+const CONGRATS_DAYS_DEFAULT = 3;      // مدة بقاء التهنئة بعد انتهاء البرنامج
+const MEMBER_NO_FLOOR = 0;            // حد أدنى صريح لرقم العضوية
+const LAB_STAGE_MIN = 10;             // دقائق كل مرحلة في المختبر الختامي
+const MAX_IMG_MB = 5;
+const DEFAULT_GROUPS = 6;
+
+const AXIS_COLORS = ['#6D4AFF','#0FB5A6','#FF7A1A','#FF3D8B','#2F7BFF','#9333EA','#0891B2','#16A34A','#D97706','#E11D48','#4F46E5','#059669','#DB2777','#0284C7','#CA8A04','#7C3AED'];
+const UNIT_NAMES = {1:'الوحدة 1',2:'الوحدة 2',3:'الوحدة 3',4:'الوحدة 4',5:'الوحدة 5',6:'فصل خاص'};
+const SLIDE_TYPES = {opening:'افتتاحية',principle:'مبدأ علمي',examples:'أمثلة',mistakes:'أخطاء وتصحيحات',tools:'أدوات',summary:'خلاصة'};
+const FORMATS = {text:'نصية حرة',mcq:'اختيار من متعدد',truefalse:'صح أم خطأ',fillblank:'إكمال الفراغ',comparePairs:'مقارنة نقيضين'};
+const FORMAT_MODE = {mcq:'individual',truefalse:'individual',fillblank:'group',comparePairs:'group'};
+
+// ---------------------------------------------------------------------
+// 2) طبقات آمنة للتخزين والتاريخ (بعض البيئات المعزولة ترمي SecurityError)
+// ---------------------------------------------------------------------
+const memStore = {};
+function mkSafeStore(getter) {
+  return {
+    get(k) { try { const s = getter(); return s ? s.getItem(k) : (k in memStore ? memStore[k] : null); } catch (e) { return k in memStore ? memStore[k] : null; } },
+    set(k, v) { memStore[k] = v; try { const s = getter(); if (s) s.setItem(k, v); } catch (e) {} },
+    del(k) { delete memStore[k]; try { const s = getter(); if (s) s.removeItem(k); } catch (e) {} }
+  };
+}
+const SafeLS = mkSafeStore(() => window.localStorage);
+const SafeSS = mkSafeStore(() => window.sessionStorage);
+const Cookie = {
+  get(k) { try { const m = document.cookie.match(new RegExp('(?:^|; )' + k + '=([^;]*)')); return m ? decodeURIComponent(m[1]) : null; } catch (e) { return null; } },
+  set(k, v, days = 365) { try { document.cookie = k + '=' + encodeURIComponent(v) + '; max-age=' + (days * 86400) + '; path=/; SameSite=Lax'; } catch (e) {} },
+  del(k) { try { document.cookie = k + '=; max-age=0; path=/'; } catch (e) {} }
+};
+const SafeHist = {
+  push(state, url) { try { history.pushState(state, '', url); return true; } catch (e) { SafeHist._fallback = state; return false; } },
+  replace(state, url) { try { history.replaceState(state, '', url); return true; } catch (e) { SafeHist._fallback = state; return false; } },
+  state() { try { return history.state || SafeHist._fallback || null; } catch (e) { return SafeHist._fallback || null; } }
+};
+function getHashParams() { try { const h = (location.hash || '').replace(/^#/, ''); const o = {}; h.split('&').forEach(p => { const [k, v] = p.split('='); if (k) o[k] = decodeURIComponent(v || ''); }); return o; } catch (e) { return {}; } }
+function buildHash(params) { return '#' + Object.keys(params).filter(k => params[k] != null && params[k] !== '').map(k => k + '=' + encodeURIComponent(params[k])).join('&'); }
+
+// ---------------------------------------------------------------------
+// 3) أدوات عامة
+// ---------------------------------------------------------------------
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+function h(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+function stripHtml(s) { const d = document.createElement('div'); d.innerHTML = s || ''; return (d.textContent || '').replace(/\s+/g, ' ').trim(); }
+function genId(p = '') { return p + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+function arr(v) { if (!v) return []; if (Array.isArray(v)) return v.filter(x => x != null); if (typeof v === 'object') return Object.keys(v).sort((a, b) => (+a) - (+b)).map(k => v[k]).filter(x => x != null); return []; }
+function clean(o) { return o === undefined ? null : JSON.parse(JSON.stringify(o)); }
+function clip(s, n) { s = String(s || ''); if (s.length <= n) return s; const c = s.slice(0, n); return c.slice(0, Math.max(c.lastIndexOf(' '), n - 20)) + '…'; }
+function pad4(n) { return String(n).padStart(4, '0'); }
+function fmtDate(ts) { const d = new Date(ts || Date.now()); return d.getDate() + '/' + (d.getMonth() + 1) + '/' + d.getFullYear(); }
+function fmtTime(ts) { const d = new Date(ts); const p = n => String(n).padStart(2, '0'); return p(d.getHours()) + ':' + p(d.getMinutes()) + ' — ' + fmtDate(ts); }
+function ago(ts) { const s = Math.max(0, Math.round((Date.now() - ts) / 1000)); if (s < 60) return 'قبل ' + s + ' ث'; if (s < 3600) return 'قبل ' + Math.round(s / 60) + ' د'; if (s < 86400) return 'قبل ' + Math.round(s / 3600) + ' س'; return fmtDate(ts); }
+function mmss(ms) { ms = Math.max(0, ms); const t = Math.ceil(ms / 1000); const m = Math.floor(t / 60), s = t % 60; return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0'); }
+function initials(n) { n = (n || '?').trim(); return n.charAt(0); }
+function shade(hex, amt) { // amt: -1..1
+  let c = hex.replace('#', ''); if (c.length === 3) c = c.split('').map(x => x + x).join('');
+  const n = parseInt(c, 16); let r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+  const f = v => Math.round(amt < 0 ? v * (1 + amt) : v + (255 - v) * amt);
+  return '#' + [f(r), f(g), f(b)].map(v => Math.max(0, Math.min(255, v)).toString(16).padStart(2, '0')).join('');
+}
+function tint(hex, a) { let c = hex.replace('#', ''); const n = parseInt(c, 16); return 'rgba(' + (n >> 16) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')'; }
+function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+function loadScript(src) {
+  loadScript.cache = loadScript.cache || {};
+  if (loadScript.cache[src]) return loadScript.cache[src];
+  loadScript.cache[src] = new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => { delete loadScript.cache[src]; rej(new Error('تعذر تحميل المكتبة')); }; document.head.appendChild(s); });
+  return loadScript.cache[src];
+}
+function downloadBlob(blob, name) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500); }
+
+// ---------------------------------------------------------------------
+// 4) قاعدة البيانات — نفس الواجهة البرمجية للوضع الحقيقي ووضع المحاكاة
+// ---------------------------------------------------------------------
+const DB = (function () {
+  const norm = p => String(p || '').replace(/^\/+|\/+$/g, '');
+  if (!DEMO_MODE) {
+    try {
+      firebase.initializeApp(firebaseConfig);
+      const db = firebase.database();
+      let offset = 0;
+      db.ref('.info/serverTimeOffset').on('value', s => { offset = s.val() || 0; });
+      return {
+        real: true,
+        watch(path, cb) { const ref = db.ref(norm(path)); const fn = s => cb(s.val()); ref.on('value', fn, () => {}); return () => ref.off('value', fn); },
+        get(path) { return db.ref(norm(path)).once('value').then(s => s.val()); },
+        set(path, v) { return db.ref(norm(path)).set(clean(v)); },
+        update(path, obj) { return db.ref(norm(path) || undefined).update(clean(obj)); },
+        remove(path) { return db.ref(norm(path)).remove(); },
+        push(path, v) { const r = db.ref(norm(path)).push(); return r.set(clean(v)).then(() => r.key); },
+        transaction(path, fn) { return db.ref(norm(path)).transaction(fn).then(r => r.snapshot.val()); },
+        now() { return Date.now() + offset; }
+      };
+    } catch (e) { console.warn('Firebase init failed, using local mode', e); }
+  }
+  // ---- وضع المحاكاة المحلي (localStorage) — يطلق المراقبات بشكل متزامن فور التسجيل ----
+  const KEY = 'mcomm_demo_db';
+  let tree = {};
+  try { tree = JSON.parse(SafeLS.get(KEY) || '{}') || {}; } catch (e) { tree = {}; }
+  const watchers = [];
+  const segs = p => norm(p).split('/').filter(Boolean);
+  function getAt(p) { let n = tree; for (const s of segs(p)) { if (n == null || typeof n !== 'object') return null; n = n[s]; } return n === undefined ? null : n; }
+  function setAt(p, v) {
+    const s = segs(p); if (!s.length) { tree = v == null ? {} : clean(v); return; }
+    let n = tree; for (let i = 0; i < s.length - 1; i++) { if (n[s[i]] == null || typeof n[s[i]] !== 'object') n[s[i]] = {}; n = n[s[i]]; }
+    if (v == null) delete n[s[s.length - 1]]; else n[s[s.length - 1]] = clean(v);
+    prune(tree);
+  }
+  function prune(o) { if (!o || typeof o !== 'object') return; Object.keys(o).forEach(k => { if (o[k] && typeof o[k] === 'object') { prune(o[k]); if (!Object.keys(o[k]).length) delete o[k]; } }); }
+  function persist() { try { SafeLS.set(KEY, JSON.stringify(tree)); } catch (e) { console.warn('local db too large', e); } }
+  function related(a, b) { a = norm(a); b = norm(b); return !a || !b || a === b || a.startsWith(b + '/') || b.startsWith(a + '/'); }
+  function notify(changed) { watchers.slice().forEach(w => { if (w.alive && related(w.path, changed)) { try { w.cb(clone(getAt(w.path))); } catch (e) { console.error(e); } } }); }
+  const clone = v => v == null ? null : JSON.parse(JSON.stringify(v));
+  window.addEventListener('storage', e => { if (e.key === KEY) { try { tree = JSON.parse(e.newValue || '{}') || {}; } catch (er) {} notify(''); } });
+  return {
+    real: false,
+    watch(path, cb) { const w = { path, cb, alive: true }; watchers.push(w); try { cb(clone(getAt(path))); } catch (e) { console.error(e); } return () => { w.alive = false; const i = watchers.indexOf(w); if (i > -1) watchers.splice(i, 1); }; },
+    get(path) {
+      // قراءة لمرة واحدة: علم بولياني منفصل بدل استدعاء دالة الإلغاء داخل تعريفها (تفادي TDZ)
+      return new Promise(res => { let called = false; let un = null; un = this.watch(path, v => { if (called) return; called = true; res(v); if (un) un(); }); if (called && un) un(); });
+    },
+    set(path, v) { setAt(path, v); persist(); notify(path); return Promise.resolve(); },
+    update(path, obj) { const base = norm(path); Object.keys(obj || {}).forEach(k => setAt(base ? base + '/' + k : k, obj[k])); persist(); Object.keys(obj || {}).forEach(k => notify(base ? base + '/' + k : k)); return Promise.resolve(); },
+    remove(path) { setAt(path, null); persist(); notify(path); return Promise.resolve(); },
+    push(path, v) { const k = genId('k'); return this.set(norm(path) + '/' + k, v).then(() => k); },
+    transaction(path, fn) { const nv = fn(clone(getAt(path))); if (nv !== undefined) { setAt(path, nv); persist(); notify(path); } return Promise.resolve(clone(getAt(path))); },
+    now() { return Date.now(); }
+  };
+})();
+
+// ---------------------------------------------------------------------
+// 5) نوافذ داخل الصفحة (بدل alert/confirm/prompt الأصلية) + إشعار سريع
+// ---------------------------------------------------------------------
+const UI = {
+  modal(html, opts = {}) {
+    const back = document.createElement('div'); back.className = 'modal-back';
+    back.innerHTML = '<div class="modal ' + (opts.wide ? 'wide' : '') + '" role="dialog">' + html + '</div>';
+    document.body.appendChild(back);
+    const close = () => { back.remove(); if (opts.onClose) opts.onClose(); };
+    if (!opts.sticky) back.addEventListener('click', e => { if (e.target === back) close(); });
+    const api = { el: back.firstChild, close };
+    if (opts.onMount) opts.onMount(api);
+    return api;
+  },
+  alert(msg, title = 'تنبيه') {
+    return new Promise(res => { const m = UI.modal('<h3>' + h(title) + '</h3><div>' + msg + '</div><div class="actions"><button class="btn btn-primary" data-ok>حسنًا</button></div>', { onClose: res }); $('[data-ok]', m.el).onclick = () => m.close(); });
+  },
+  confirm(msg, o = {}) {
+    return new Promise(res => {
+      let done = false; const fin = v => { if (!done) { done = true; res(v); } };
+      const m = UI.modal('<h3>' + h(o.title || 'تأكيد') + '</h3><div>' + msg + '</div><div class="actions"><button class="btn ' + (o.danger ? 'btn-danger' : 'btn-primary') + '" data-ok>' + h(o.ok || 'تأكيد') + '</button><button class="btn btn-ghost" data-no>إلغاء</button></div>', { onClose: () => fin(false) });
+      $('[data-ok]', m.el).onclick = () => { fin(true); m.close(); };
+      $('[data-no]', m.el).onclick = () => m.close();
+    });
+  },
+  prompt(msg, o = {}) {
+    return new Promise(res => {
+      let done = false; const fin = v => { if (!done) { done = true; res(v); } };
+      const m = UI.modal('<h3>' + h(o.title || '') + '</h3><div>' + msg + '</div><div class="field" style="margin-top:12px"><input data-in type="' + (o.type || 'text') + '" inputmode="' + (o.inputmode || 'text') + '" placeholder="' + h(o.placeholder || '') + '" value="' + h(o.value || '') + '"></div><div class="actions"><button class="btn btn-primary" data-ok>' + h(o.ok || 'متابعة') + '</button><button class="btn btn-ghost" data-no>إلغاء</button></div>', { onClose: () => fin(null) });
+      const inp = $('[data-in]', m.el); setTimeout(() => inp.focus(), 50);
+      const ok = () => { fin(inp.value); m.close(); };
+      $('[data-ok]', m.el).onclick = ok; inp.onkeydown = e => { if (e.key === 'Enter') ok(); };
+      $('[data-no]', m.el).onclick = () => m.close();
+    });
+  },
+  toast(msg, ms = 2600) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), ms); }
+};
