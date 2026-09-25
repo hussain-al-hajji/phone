@@ -145,6 +145,7 @@ const Progress = {
   exDone(e, uid) {
     const ps = Store.posts[e.id]; if (!ps || !uid) return false;
     if (e.mode === 'group') return Object.keys(ps).some(k => ps[k] && ps[k].members && ps[k].members[uid]);
+    if (e.format === 'mcq') { const a = ansList(ps[uid] && ps[uid].answers, e.items.length); return !!ps[uid] && a.every(v => v !== null && v !== ''); }
     return !!ps[uid];
   },
   // يستثني تمامًا: المحاور المخفية، المحاور المعطلة، والتمارين المخفية

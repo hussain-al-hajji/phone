@@ -154,7 +154,7 @@ async function buildCongratsPdf(name) {
 }
 
 // ---------- مشاركات متدرب محدد ----------
-function exCorrectness(e, answers) { const a = arr(answers); let sc = 0; e.items.forEach((it, i) => { const v = a[i]; if (v == null || v === '') return; if (e.format === 'mcq' ? +v === +it.answer : e.format === 'truefalse' ? ((v === true || v === 'true') === !!it.answer) : v === it.answer) sc++; }); return sc; }
+function exCorrectness(e, answers) { const a = ansList(answers, e.items.length); let sc = 0; e.items.forEach((it, i) => { const v = a[i]; if (v == null || v === '') return; if (e.format === 'mcq' ? +v === +it.answer : e.format === 'truefalse' ? ((v === true || v === 'true') === !!it.answer) : v === it.answer) sc++; }); return sc; }
 function participationOf(uid) {
   const g = Groups.assignedOf(uid); const sections = [];
   const pick = e => { const ps = Store.posts[e.id] || {}; if (e.mode === 'group') { if (!g) return null; const p = ps['g' + g]; return p ? { p, group: g } : null; } const p = ps[uid]; return p ? { p } : null; };
@@ -165,7 +165,7 @@ function participationOf(uid) {
 }
 function answerPdfHtml(e, p) {
   if (e.format === 'text') return '<div class="j" style="white-space:pre-wrap;background:#FAF9FE;border:1px solid #E7E3F3;border-radius:12px;padding:10px 12px">' + h(p.text || '') + '</div>';
-  const a = arr(p.answers);
+  const a = ansList(p.answers, e.items.length);
   return '<div class="nl">' + e.items.map((it, i) => {
     const v = a[i]; let q = '', ans = '', ok = false, corr = '';
     if (e.format === 'mcq') { q = it.q; ans = v != null ? LETTERS[v] + ') ' + (it.options[v] || '') : '—'; ok = v != null && +v === +it.answer; corr = LETTERS[it.answer] + ') ' + it.options[it.answer]; }
@@ -203,7 +203,7 @@ function csvEsc(v) { const s = String(v == null ? '' : v); return /[",\n\r]/.tes
 function csvBlob(rows) { return new Blob(['﻿' + rows.map(r => r.map(csvEsc).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' }); }
 function answerText(e, p) {
   if (e.format === 'text') return p.text || '';
-  const a = arr(p.answers);
+  const a = ansList(p.answers, e.items.length);
   return e.items.map((it, i) => { const v = a[i]; let t = '—'; if (v != null && v !== '') { if (e.format === 'mcq') t = LETTERS[v] + ') ' + (it.options[v] || ''); else if (e.format === 'truefalse') t = (v === true || v === 'true') ? 'صح' : 'خطأ'; else if (e.format === 'fillblank') t = v; else t = '(' + (v === 'a' ? 'أ' : 'ب') + ') ' + it[v]; } return (i + 1) + ': ' + t; }).join(' | ');
 }
 function exportAllCsv() {

@@ -64,6 +64,7 @@ function h(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace
 function stripHtml(s) { const d = document.createElement('div'); d.innerHTML = s || ''; return (d.textContent || '').replace(/\s+/g, ' ').trim(); }
 function genId(p = '') { return p + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 function arr(v) { if (!v) return []; if (Array.isArray(v)) return v.filter(x => x != null); if (typeof v === 'object') return Object.keys(v).sort((a, b) => (+a) - (+b)).map(k => v[k]).filter(x => x != null); return []; }
+function ansList(v, n) { if (!v) return n ? new Array(n).fill(null) : []; const keys = Object.keys(v).map(Number).filter(k => !isNaN(k)); const len = n || (keys.length ? Math.max(...keys) + 1 : 0); const out = []; for (let i = 0; i < len; i++) { const x = v[i]; out.push(x === undefined ? null : x); } return out; }
 function clean(o) { return o === undefined ? null : JSON.parse(JSON.stringify(o)); }
 function clip(s, n) { s = String(s || ''); if (s.length <= n) return s; const c = s.slice(0, n); return c.slice(0, Math.max(c.lastIndexOf(' '), n - 20)) + '…'; }
 function pad4(n) { return String(n).padStart(4, '0'); }

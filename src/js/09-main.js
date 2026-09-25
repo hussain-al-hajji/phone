@@ -179,9 +179,14 @@ document.addEventListener('click', async ev => {
       else UI.toast('اختر كلمة من البنك أولًا');
       App.render(); break;
     }
+    case 'vote': { // حفظ فوري لكل سؤال على حدة، والتعديل بالضغط على خيار آخر
+      if (!Me.isReg()) break; const me = Me.data; const i = t.getAttribute('data-i');
+      DB.update('posts/' + exId + '/' + me.uid, { ['answers/' + i]: +t.getAttribute('data-v'), name: me.name, role: me.role || '', uid: me.uid, ts: DB.now() });
+      break;
+    }
     case 'save-inter': saveInter(exId); break;
     case 'save-text': saveText(exId); break;
-    case 'edit-ans': { UIState.editing[exId] = true; const e = Content.ex(exId); if (e) { const p = (Store.posts[exId] || {})[postKey(e)]; if (p && p.answers) UIState.draft[exId] = arr(p.answers).slice(); } App.render(); break; }
+    case 'edit-ans': { UIState.editing[exId] = true; const e = Content.ex(exId); if (e) { const p = (Store.posts[exId] || {})[postKey(e)]; if (p && p.answers) UIState.draft[exId] = ansList(p.answers, e.items.length); } App.render(); break; }
     case 'cancel-edit': UIState.editing[exId] = false; delete UIState.draft[exId]; App.render(); break;
     case 'show-model': UIState.modelShown[exId] = true; App.render(); break;
     case 'del-post': { if (await UI.confirm('حذف هذه المشاركة وحدها؟ لن تتأثر بقية المشاركات.', { danger: true, ok: 'حذف' })) DB.remove('posts/' + exId + '/' + t.getAttribute('data-k')); break; }

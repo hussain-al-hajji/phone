@@ -96,7 +96,7 @@ document.addEventListener('keydown', e => { if (Router.cur.view !== 'axis' || /I
 
 // ============ صفحة التمرين ============
 const DEFAULT_STEPS = {
-  mcq: ['اقرأ كل سؤال بتمعّن.', 'اختر إجابة واحدة لكل سؤال.', 'اضغط «حفظ الإجابات» ثم تابع إجابات زملائك مباشرة.'],
+  mcq: ['اقرأ كل سؤال بتمعّن.', 'اضغط الخيار الذي تراه صحيحًا — تُحفظ إجابتك فورًا دون زر حفظ.', 'تظهر نسبة اختيار كل خيار بين المتدربين، ويمكنك تغيير اختيارك في أي وقت بالضغط على خيار آخر.'],
   truefalse: ['اقرأ كل عبارة بدقة.', 'حدد «صح» أو «خطأ» لكل عبارة.', 'اضغط «حفظ الإجابات» ثم تابع إجابات زملائك مباشرة.'],
   fillblank: ['اختر مجموعتك أولًا من البطاقة أعلاه.', 'اضغط كلمة من البنك ثم اضغط الفراغ المناسب لها.', 'لتصحيح فراغ ممتلئ، اضغط عليه فيُفرَغ وتعود كلمته إلى البنك.', 'اضغط «حفظ وإرسال إجابات المجموعة».'],
   comparePairs: ['اختر مجموعتك أولًا من البطاقة أعلاه.', 'في كل زوج اختر العبارة الأدق: (أ) أو (ب).', 'اضغط «حفظ وإرسال إجابات المجموعة».'],
@@ -123,7 +123,7 @@ function groupPickerHtml(e, o = {}) {
 
 // ---- عرض الإجابات التفاعلية (للخلاصة والتغذية الحية) ----
 function answersSummary(e, answers, reveal, compact) {
-  answers = arr(answers);
+  answers = ansList(answers, e.items.length);
   if (e.format === 'mcq' || e.format === 'truefalse') {
     let score = 0;
     const rows = e.items.map((it, i) => {
@@ -144,9 +144,33 @@ function answersSummary(e, answers, reveal, compact) {
   return '';
 }
 
+// ---- الاختيار من متعدد بأسلوب التصويت: الضغط على الخيار يحفظه فورًا وتظهر نسب الاختيار ----
+function mcqStats(e) {
+  const ps = Store.posts[e.id] || {}; const st = e.items.map(it => ({ total: 0, counts: it.options.map(() => 0) }));
+  Object.keys(ps).forEach(k => { const a = ansList(ps[k] && ps[k].answers, e.items.length); a.forEach((v, i) => { if (v === null || v === '' || !st[i]) return; const n = +v; if (n >= 0 && n < st[i].counts.length) { st[i].counts[n]++; st[i].total++; } }); });
+  return st;
+}
+function mcqPollHtml(e) {
+  const reveal = isRevealed(e); const st = mcqStats(e);
+  const mine = Me.isReg() ? ansList(((Store.posts[e.id] || {})[Me.uid()] || {}).answers, e.items.length) : [];
+  return e.items.map((it, i) => {
+    const my = mine[i]; const answered = my !== null && my !== undefined && my !== '';
+    const showPct = answered || !Me.isReg() || Admin.ctl();
+    return '<div class="q-card"><div class="qt"><span class="qn num">' + (i + 1) + '</span><span>' + h(it.q) + '</span></div><div class="opts">' +
+      it.options.map((o, k) => {
+        const sel = answered && +my === k; const c = st[i].counts[k]; const pct = st[i].total ? Math.round(c / st[i].total * 100) : 0;
+        let cls = sel ? 'sel' : ''; if (reveal) { if (k === +it.answer) cls = 'right'; else if (sel) cls = 'wrong'; }
+        return '<button class="opt poll ' + cls + '" data-act="vote" data-ex="' + h(e.id) + '" data-i="' + i + '" data-v="' + k + '" ' + (Me.isReg() ? '' : 'disabled') + '>' +
+          (showPct ? '<span class="poll-bar" style="width:' + pct + '%"></span>' : '') +
+          '<span class="mk">' + (sel ? '✓' : '') + '</span><span class="grow"><b>' + LETTERS[k] + ')</b> ' + h(o) + '</span>' +
+          (showPct ? '<span class="poll-pct num">' + pct + '%</span>' : '') + '</button>';
+      }).join('') + '</div>' + (showPct ? '<div class="poll-total">👥 <span class="num">' + st[i].total + '</span> ' + (st[i].total === 1 ? 'مشاركة' : 'مشاركات') + (reveal ? ' · 🔓 الإجابة الصحيحة: ' + LETTERS[it.answer] + ')' : '') + '</div>' : '') + '</div>';
+  }).join('');
+}
+
 // ---- مكوّن الإجابة التفاعلية ----
 function interactiveHtml(e, post, canAct, editing) {
-  const reveal = isRevealed(e); const saved = post ? arr(post.answers) : null;
+  const reveal = isRevealed(e); const saved = post ? ansList(post.answers, e.items.length) : null;
   let draft = UIState.draft[e.id];
   if (!draft) { draft = saved ? saved.slice() : e.items.map(() => null); UIState.draft[e.id] = draft; }
   const active = canAct && (editing || !post);
@@ -181,6 +205,7 @@ function interactiveHtml(e, post, canAct, editing) {
 
 function answerBoxHtml(e) {
   const col = exColor(e);
+  if (e.format === 'mcq') return '<div class="answer-box" style="--ac:' + col + ';--acg:' + tint(col, .1) + '">' + (Me.isReg() ? '<div class="status-note" style="margin-bottom:4px">👆 اضغط أي خيار لحفظ إجابتك فورًا، ويمكنك تغييرها في أي وقت.</div>' : '<div class="locked-note">🔒 للمسجلين فقط — يمكنك مشاهدة نتائج التصويت دون المشاركة.</div>') + mcqPollHtml(e) + '</div>';
   if (!Me.isReg()) return '<div class="answer-box"><div class="locked-note">🔒 للمسجلين فقط — صناديق الإجابة معطّلة في وضع التصفح كزائر.</div>' + (e.format !== 'text' ? '<div class="disabled-area">' + interactiveHtml(e, null, false, false) + '</div>' : '<textarea disabled placeholder="🔒 للمسجلين فقط"></textarea>') + '</div>';
   const isGroup = e.mode === 'group'; const key = postKey(e);
   if (isGroup && !key) {
@@ -198,6 +223,7 @@ function answerBoxHtml(e) {
 }
 
 function feedHtml(e) {
+  if (e.format === 'mcq') return ''; // نتائج التصويت تظهر داخل الخيارات نفسها
   const ps = Store.posts[e.id] || {}; const keys = Object.keys(ps).filter(k => ps[k]).sort((x, y) => (ps[y].ts || 0) - (ps[x].ts || 0));
   const reveal = isRevealed(e); const myKey = Me.isReg() ? postKey(e) : null;
   const del = k => Admin.ctl() ? '<button class="del-btn" data-act="del-post" data-ex="' + h(e.id) + '" data-k="' + h(k) + '" title="حذف هذه المشاركة">🗑 حذف</button>' : '';

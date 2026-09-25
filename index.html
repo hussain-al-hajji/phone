@@ -262,6 +262,14 @@ ul,ol{margin:.3em 0;padding-inline-start:1.3em}
 .opt.right{border-color:var(--ok);background:var(--ok-bg)}
 .opt.wrong{border-color:var(--danger);background:var(--bad-bg)}
 .opt[disabled]{cursor:default}
+.opt.poll{position:relative;overflow:hidden}
+.opt.poll>*{position:relative}
+.opt.poll .poll-bar{position:absolute;inset-block:0;inset-inline-start:0;background:var(--acg,#F1EEFF);border-radius:10px;transition:width .5s ease;z-index:0}
+.opt.poll.sel .poll-bar{background:var(--ac,var(--brand));opacity:.18}
+.opt.poll.right .poll-bar{background:var(--ok);opacity:.18}
+.opt.poll.wrong .poll-bar{background:var(--danger);opacity:.16}
+.opt .poll-pct{font-family:var(--f-ui);font-weight:700;font-size:14px;color:var(--ink-2);min-width:42px;text-align:end}
+.poll-total{margin-top:6px;font-family:var(--f-ui);font-size:12.5px;color:var(--ink-3)}
 .tf-row{display:flex;gap:8px}
 .tf-row .opt{justify-content:center;width:auto;flex:1}
 .disabled-area{opacity:.55;pointer-events:none;filter:grayscale(.3)}
@@ -543,6 +551,7 @@ function h(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace
 function stripHtml(s) { const d = document.createElement('div'); d.innerHTML = s || ''; return (d.textContent || '').replace(/\s+/g, ' ').trim(); }
 function genId(p = '') { return p + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 function arr(v) { if (!v) return []; if (Array.isArray(v)) return v.filter(x => x != null); if (typeof v === 'object') return Object.keys(v).sort((a, b) => (+a) - (+b)).map(k => v[k]).filter(x => x != null); return []; }
+function ansList(v, n) { if (!v) return n ? new Array(n).fill(null) : []; const keys = Object.keys(v).map(Number).filter(k => !isNaN(k)); const len = n || (keys.length ? Math.max(...keys) + 1 : 0); const out = []; for (let i = 0; i < len; i++) { const x = v[i]; out.push(x === undefined ? null : x); } return out; }
 function clean(o) { return o === undefined ? null : JSON.parse(JSON.stringify(o)); }
 function clip(s, n) { s = String(s || ''); if (s.length <= n) return s; const c = s.slice(0, n); return c.slice(0, Math.max(c.lastIndexOf(' '), n - 20)) + '…'; }
 function pad4(n) { return String(n).padStart(4, '0'); }
@@ -1325,6 +1334,7 @@ const Progress = {
   exDone(e, uid) {
     const ps = Store.posts[e.id]; if (!ps || !uid) return false;
     if (e.mode === 'group') return Object.keys(ps).some(k => ps[k] && ps[k].members && ps[k].members[uid]);
+    if (e.format === 'mcq') { const a = ansList(ps[uid] && ps[uid].answers, e.items.length); return !!ps[uid] && a.every(v => v !== null && v !== ''); }
     return !!ps[uid];
   },
   // يستثني تمامًا: المحاور المخفية، المحاور المعطلة، والتمارين المخفية
@@ -1667,7 +1677,7 @@ document.addEventListener('keydown', e => { if (Router.cur.view !== 'axis' || /I
 
 // ============ صفحة التمرين ============
 const DEFAULT_STEPS = {
-  mcq: ['اقرأ كل سؤال بتمعّن.', 'اختر إجابة واحدة لكل سؤال.', 'اضغط «حفظ الإجابات» ثم تابع إجابات زملائك مباشرة.'],
+  mcq: ['اقرأ كل سؤال بتمعّن.', 'اضغط الخيار الذي تراه صحيحًا — تُحفظ إجابتك فورًا دون زر حفظ.', 'تظهر نسبة اختيار كل خيار بين المتدربين، ويمكنك تغيير اختيارك في أي وقت بالضغط على خيار آخر.'],
   truefalse: ['اقرأ كل عبارة بدقة.', 'حدد «صح» أو «خطأ» لكل عبارة.', 'اضغط «حفظ الإجابات» ثم تابع إجابات زملائك مباشرة.'],
   fillblank: ['اختر مجموعتك أولًا من البطاقة أعلاه.', 'اضغط كلمة من البنك ثم اضغط الفراغ المناسب لها.', 'لتصحيح فراغ ممتلئ، اضغط عليه فيُفرَغ وتعود كلمته إلى البنك.', 'اضغط «حفظ وإرسال إجابات المجموعة».'],
   comparePairs: ['اختر مجموعتك أولًا من البطاقة أعلاه.', 'في كل زوج اختر العبارة الأدق: (أ) أو (ب).', 'اضغط «حفظ وإرسال إجابات المجموعة».'],
@@ -1694,7 +1704,7 @@ function groupPickerHtml(e, o = {}) {
 
 // ---- عرض الإجابات التفاعلية (للخلاصة والتغذية الحية) ----
 function answersSummary(e, answers, reveal, compact) {
-  answers = arr(answers);
+  answers = ansList(answers, e.items.length);
   if (e.format === 'mcq' || e.format === 'truefalse') {
     let score = 0;
     const rows = e.items.map((it, i) => {
@@ -1715,9 +1725,33 @@ function answersSummary(e, answers, reveal, compact) {
   return '';
 }
 
+// ---- الاختيار من متعدد بأسلوب التصويت: الضغط على الخيار يحفظه فورًا وتظهر نسب الاختيار ----
+function mcqStats(e) {
+  const ps = Store.posts[e.id] || {}; const st = e.items.map(it => ({ total: 0, counts: it.options.map(() => 0) }));
+  Object.keys(ps).forEach(k => { const a = ansList(ps[k] && ps[k].answers, e.items.length); a.forEach((v, i) => { if (v === null || v === '' || !st[i]) return; const n = +v; if (n >= 0 && n < st[i].counts.length) { st[i].counts[n]++; st[i].total++; } }); });
+  return st;
+}
+function mcqPollHtml(e) {
+  const reveal = isRevealed(e); const st = mcqStats(e);
+  const mine = Me.isReg() ? ansList(((Store.posts[e.id] || {})[Me.uid()] || {}).answers, e.items.length) : [];
+  return e.items.map((it, i) => {
+    const my = mine[i]; const answered = my !== null && my !== undefined && my !== '';
+    const showPct = answered || !Me.isReg() || Admin.ctl();
+    return '<div class="q-card"><div class="qt"><span class="qn num">' + (i + 1) + '</span><span>' + h(it.q) + '</span></div><div class="opts">' +
+      it.options.map((o, k) => {
+        const sel = answered && +my === k; const c = st[i].counts[k]; const pct = st[i].total ? Math.round(c / st[i].total * 100) : 0;
+        let cls = sel ? 'sel' : ''; if (reveal) { if (k === +it.answer) cls = 'right'; else if (sel) cls = 'wrong'; }
+        return '<button class="opt poll ' + cls + '" data-act="vote" data-ex="' + h(e.id) + '" data-i="' + i + '" data-v="' + k + '" ' + (Me.isReg() ? '' : 'disabled') + '>' +
+          (showPct ? '<span class="poll-bar" style="width:' + pct + '%"></span>' : '') +
+          '<span class="mk">' + (sel ? '✓' : '') + '</span><span class="grow"><b>' + LETTERS[k] + ')</b> ' + h(o) + '</span>' +
+          (showPct ? '<span class="poll-pct num">' + pct + '%</span>' : '') + '</button>';
+      }).join('') + '</div>' + (showPct ? '<div class="poll-total">👥 <span class="num">' + st[i].total + '</span> ' + (st[i].total === 1 ? 'مشاركة' : 'مشاركات') + (reveal ? ' · 🔓 الإجابة الصحيحة: ' + LETTERS[it.answer] + ')' : '') + '</div>' : '') + '</div>';
+  }).join('');
+}
+
 // ---- مكوّن الإجابة التفاعلية ----
 function interactiveHtml(e, post, canAct, editing) {
-  const reveal = isRevealed(e); const saved = post ? arr(post.answers) : null;
+  const reveal = isRevealed(e); const saved = post ? ansList(post.answers, e.items.length) : null;
   let draft = UIState.draft[e.id];
   if (!draft) { draft = saved ? saved.slice() : e.items.map(() => null); UIState.draft[e.id] = draft; }
   const active = canAct && (editing || !post);
@@ -1752,6 +1786,7 @@ function interactiveHtml(e, post, canAct, editing) {
 
 function answerBoxHtml(e) {
   const col = exColor(e);
+  if (e.format === 'mcq') return '<div class="answer-box" style="--ac:' + col + ';--acg:' + tint(col, .1) + '">' + (Me.isReg() ? '<div class="status-note" style="margin-bottom:4px">👆 اضغط أي خيار لحفظ إجابتك فورًا، ويمكنك تغييرها في أي وقت.</div>' : '<div class="locked-note">🔒 للمسجلين فقط — يمكنك مشاهدة نتائج التصويت دون المشاركة.</div>') + mcqPollHtml(e) + '</div>';
   if (!Me.isReg()) return '<div class="answer-box"><div class="locked-note">🔒 للمسجلين فقط — صناديق الإجابة معطّلة في وضع التصفح كزائر.</div>' + (e.format !== 'text' ? '<div class="disabled-area">' + interactiveHtml(e, null, false, false) + '</div>' : '<textarea disabled placeholder="🔒 للمسجلين فقط"></textarea>') + '</div>';
   const isGroup = e.mode === 'group'; const key = postKey(e);
   if (isGroup && !key) {
@@ -1769,6 +1804,7 @@ function answerBoxHtml(e) {
 }
 
 function feedHtml(e) {
+  if (e.format === 'mcq') return ''; // نتائج التصويت تظهر داخل الخيارات نفسها
   const ps = Store.posts[e.id] || {}; const keys = Object.keys(ps).filter(k => ps[k]).sort((x, y) => (ps[y].ts || 0) - (ps[x].ts || 0));
   const reveal = isRevealed(e); const myKey = Me.isReg() ? postKey(e) : null;
   const del = k => Admin.ctl() ? '<button class="del-btn" data-act="del-post" data-ex="' + h(e.id) + '" data-k="' + h(k) + '" title="حذف هذه المشاركة">🗑 حذف</button>' : '';
@@ -1936,7 +1972,7 @@ function exSummary(e) {
     keys.slice(0, 30).map(k => { const p = ps[k]; const who = k.charAt(0) === 'g' && e.mode === 'group' ? Groups.label(+k.slice(1)) : (p.name || 'مشارك');
       let brief = '';
       if (e.format === 'text') brief = h(String(p.text || '').slice(0, 140)) + (String(p.text || '').length > 140 ? '…' : '');
-      else { const a = arr(p.answers); let sc = 0; e.items.forEach((it, i) => { const v = a[i]; if (v == null) return; if (e.format === 'mcq' ? +v === +it.answer : e.format === 'truefalse' ? ((v === true || v === 'true') === !!it.answer) : v === it.answer) sc++; }); brief = 'الصحيح: ' + sc + ' من ' + e.items.length; }
+      else { const a = ansList(p.answers, e.items.length); let sc = 0; e.items.forEach((it, i) => { const v = a[i]; if (v == null) return; if (e.format === 'mcq' ? +v === +it.answer : e.format === 'truefalse' ? ((v === true || v === 'true') === !!it.answer) : v === it.answer) sc++; }); brief = 'الصحيح: ' + sc + ' من ' + e.items.length; }
       return '<div class="it"><b>' + h(who) + ':</b><span class="grow">' + brief + '</span><button class="del-btn" data-act="del-post" data-ex="' + h(e.id) + '" data-k="' + h(k) + '" title="حذف هذه المشاركة وحدها">🗑</button></div>'; }).join('') + '</div>';
 }
 function exRow(e, o = {}) {
@@ -2390,7 +2426,7 @@ async function buildCongratsPdf(name) {
 }
 
 // ---------- مشاركات متدرب محدد ----------
-function exCorrectness(e, answers) { const a = arr(answers); let sc = 0; e.items.forEach((it, i) => { const v = a[i]; if (v == null || v === '') return; if (e.format === 'mcq' ? +v === +it.answer : e.format === 'truefalse' ? ((v === true || v === 'true') === !!it.answer) : v === it.answer) sc++; }); return sc; }
+function exCorrectness(e, answers) { const a = ansList(answers, e.items.length); let sc = 0; e.items.forEach((it, i) => { const v = a[i]; if (v == null || v === '') return; if (e.format === 'mcq' ? +v === +it.answer : e.format === 'truefalse' ? ((v === true || v === 'true') === !!it.answer) : v === it.answer) sc++; }); return sc; }
 function participationOf(uid) {
   const g = Groups.assignedOf(uid); const sections = [];
   const pick = e => { const ps = Store.posts[e.id] || {}; if (e.mode === 'group') { if (!g) return null; const p = ps['g' + g]; return p ? { p, group: g } : null; } const p = ps[uid]; return p ? { p } : null; };
@@ -2401,7 +2437,7 @@ function participationOf(uid) {
 }
 function answerPdfHtml(e, p) {
   if (e.format === 'text') return '<div class="j" style="white-space:pre-wrap;background:#FAF9FE;border:1px solid #E7E3F3;border-radius:12px;padding:10px 12px">' + h(p.text || '') + '</div>';
-  const a = arr(p.answers);
+  const a = ansList(p.answers, e.items.length);
   return '<div class="nl">' + e.items.map((it, i) => {
     const v = a[i]; let q = '', ans = '', ok = false, corr = '';
     if (e.format === 'mcq') { q = it.q; ans = v != null ? LETTERS[v] + ') ' + (it.options[v] || '') : '—'; ok = v != null && +v === +it.answer; corr = LETTERS[it.answer] + ') ' + it.options[it.answer]; }
@@ -2439,7 +2475,7 @@ function csvEsc(v) { const s = String(v == null ? '' : v); return /[",\n\r]/.tes
 function csvBlob(rows) { return new Blob(['﻿' + rows.map(r => r.map(csvEsc).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' }); }
 function answerText(e, p) {
   if (e.format === 'text') return p.text || '';
-  const a = arr(p.answers);
+  const a = ansList(p.answers, e.items.length);
   return e.items.map((it, i) => { const v = a[i]; let t = '—'; if (v != null && v !== '') { if (e.format === 'mcq') t = LETTERS[v] + ') ' + (it.options[v] || ''); else if (e.format === 'truefalse') t = (v === true || v === 'true') ? 'صح' : 'خطأ'; else if (e.format === 'fillblank') t = v; else t = '(' + (v === 'a' ? 'أ' : 'ب') + ') ' + it[v]; } return (i + 1) + ': ' + t; }).join(' | ');
 }
 function exportAllCsv() {
@@ -2678,9 +2714,14 @@ document.addEventListener('click', async ev => {
       else UI.toast('اختر كلمة من البنك أولًا');
       App.render(); break;
     }
+    case 'vote': { // حفظ فوري لكل سؤال على حدة، والتعديل بالضغط على خيار آخر
+      if (!Me.isReg()) break; const me = Me.data; const i = t.getAttribute('data-i');
+      DB.update('posts/' + exId + '/' + me.uid, { ['answers/' + i]: +t.getAttribute('data-v'), name: me.name, role: me.role || '', uid: me.uid, ts: DB.now() });
+      break;
+    }
     case 'save-inter': saveInter(exId); break;
     case 'save-text': saveText(exId); break;
-    case 'edit-ans': { UIState.editing[exId] = true; const e = Content.ex(exId); if (e) { const p = (Store.posts[exId] || {})[postKey(e)]; if (p && p.answers) UIState.draft[exId] = arr(p.answers).slice(); } App.render(); break; }
+    case 'edit-ans': { UIState.editing[exId] = true; const e = Content.ex(exId); if (e) { const p = (Store.posts[exId] || {})[postKey(e)]; if (p && p.answers) UIState.draft[exId] = ansList(p.answers, e.items.length); } App.render(); break; }
     case 'cancel-edit': UIState.editing[exId] = false; delete UIState.draft[exId]; App.render(); break;
     case 'show-model': UIState.modelShown[exId] = true; App.render(); break;
     case 'del-post': { if (await UI.confirm('حذف هذه المشاركة وحدها؟ لن تتأثر بقية المشاركات.', { danger: true, ok: 'حذف' })) DB.remove('posts/' + exId + '/' + t.getAttribute('data-k')); break; }
