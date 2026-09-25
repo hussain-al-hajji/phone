@@ -160,7 +160,7 @@ const RTE = {
   html(key, value, ph = '') {
     return '<div class="rte" data-rte="' + h(key) + '"><div class="rte-bar">' +
       '<select data-rte-cmd="fontSize" title="حجم الخط"><option value="">الحجم</option><option value="2">صغير</option><option value="3">عادي</option><option value="4">متوسط</option><option value="5">كبير</option><option value="6">كبير جدًا</option></select>' +
-      '<input type="color" data-rte-cmd="foreColor" value="#5B3DF5" title="لون النص">' +
+      '<input type="color" data-rte-cmd="foreColor" value="#0093A8" title="لون النص">' +
       '<span class="sep"></span><button type="button" data-rte-btn="bold" title="عريض"><b>B</b></button><button type="button" data-rte-btn="italic" title="مائل"><i>I</i></button><button type="button" data-rte-btn="underline" title="تسطير"><u>U</u></button>' +
       '<span class="sep"></span><button type="button" data-rte-btn="justifyRight" title="محاذاة يمين">⇥</button><button type="button" data-rte-btn="justifyCenter" title="توسيط">≡</button><button type="button" data-rte-btn="justifyLeft" title="محاذاة يسار">⇤</button>' +
       '<span class="sep"></span><button type="button" data-rte-btn="insertUnorderedList" title="قائمة نقطية">•</button><button type="button" data-rte-btn="insertOrderedList" title="قائمة رقمية">1.</button>' +

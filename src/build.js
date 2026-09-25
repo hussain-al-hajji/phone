@@ -25,7 +25,7 @@ const html = `<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#5B3DF5">
+<meta name="theme-color" content="#0093A8">
 <title>التحول التجاري عبر الهاتف المحمول</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -37,7 +37,7 @@ ${css}
 </style>
 </head>
 <body>
-<div id="app"><div style="min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:sans-serif;color:#8A85A3">جارٍ التحميل…</div></div>
+<div id="app"><div style="min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:sans-serif;color:#7D879C">جارٍ التحميل…</div></div>
 <script>
 ${courseJs}
 </script>

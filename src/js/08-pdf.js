@@ -8,7 +8,7 @@ const CDN = {
   jszip: 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js'
 };
 const PDF_CSS = `
-.pp{position:relative;overflow:hidden;background:#fff;font-size:14px;font-family:'Noto Sans Arabic','IBM Plex Sans Arabic',sans-serif;color:#15122B;direction:rtl;box-sizing:border-box}
+.pp{position:relative;overflow:hidden;background:#fff;font-size:14px;font-family:'Noto Sans Arabic','IBM Plex Sans Arabic',sans-serif;color:#1C2340;direction:rtl;box-sizing:border-box}
 .pp *{box-sizing:border-box}
 .pp h1,.pp h2,.pp h3{font-family:'Cairo',sans-serif;margin:0;line-height:1.35}
 .pp .j{text-align:justify;text-justify:inter-word}
@@ -17,11 +17,11 @@ const PDF_CSS = `
 .pp .nl{display:flex;flex-direction:column;gap:7px;margin-top:8px}
 .pp .nl .it{display:flex;gap:9px;align-items:flex-start}
 .pp .nl .b{width:24px;height:24px;border-radius:8px;color:#fff;font-family:Arial,sans-serif;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center;flex:none;margin-top:3px}
-.pp .pair{border-radius:12px;overflow:hidden;margin-top:8px;border:1px solid #E7E3F3}
+.pp .pair{border-radius:12px;overflow:hidden;margin-top:8px;border:1px solid #E1E9EC}
 .pp .pair .h{padding:6px 12px;font-weight:700;font-family:'IBM Plex Sans Arabic',sans-serif}
 .pp .pair .b{padding:7px 12px;background:#fff}
 .pp .rule{margin-top:12px;padding:10px 12px;border-radius:12px;font-weight:600}
-.pp .foot{position:absolute;bottom:14px;left:28px;right:28px;display:flex;justify-content:space-between;font-family:'IBM Plex Sans Arabic',sans-serif;font-size:10.5px;color:#8A85A3}
+.pp .foot{position:absolute;bottom:14px;left:28px;right:28px;display:flex;justify-content:space-between;font-family:'IBM Plex Sans Arabic',sans-serif;font-size:10.5px;color:#7D879C}
 .pp p{margin:0 0 6px}
 .pp ul,.pp ol{margin:4px 0;padding-right:18px}
 `;
@@ -61,7 +61,7 @@ function progressModal(title) {
 
 // ---------- قطع تصميم مشتركة لصفحات PDF ----------
 const PP = {
-  multiBg() { return '<div style="position:absolute;inset:0;background:#FBFAFF"></div><div style="position:absolute;inset:0;background:radial-gradient(circle at 12% 10%,rgba(109,74,255,.20),transparent 38%),radial-gradient(circle at 90% 18%,rgba(15,181,166,.20),transparent 36%),radial-gradient(circle at 85% 88%,rgba(255,122,26,.18),transparent 40%),radial-gradient(circle at 10% 90%,rgba(255,61,139,.18),transparent 40%),radial-gradient(circle at 50% 55%,rgba(47,123,255,.10),transparent 45%)"></div>'; },
+  multiBg() { return '<div style="position:absolute;inset:0;background:#F8FBFC"></div><div style="position:absolute;inset:0;background:radial-gradient(circle at 12% 10%,rgba(0,147,168,.20),transparent 38%),radial-gradient(circle at 90% 18%,rgba(0,166,83,.20),transparent 36%),radial-gradient(circle at 85% 88%,rgba(250,178,11,.18),transparent 40%),radial-gradient(circle at 10% 90%,rgba(245,130,32,.18),transparent 40%),radial-gradient(circle at 50% 55%,rgba(59,70,119,.10),transparent 45%)"></div>'; },
   scatter(axes, variant) {
     const spots = variant ? [[30, 60], [470, 40], [20, 330], [490, 300], [60, 680], [440, 700], [250, 30], [240, 730]] : [[40, 40], [480, 70], [30, 400], [480, 420], [90, 700], [420, 690], [260, 740], [250, 20]];
     return spots.map((p, i) => { const a = axes[i % Math.max(1, axes.length)]; if (!a) return ''; const col = Content.color(a); const sz = 34 + (i % 3) * 8; return '<div style="position:absolute;left:' + p[0] + 'px;top:' + p[1] + 'px;width:' + (sz + 16) + 'px;height:' + (sz + 16) + 'px;border-radius:' + (i % 2 ? '50%' : '16px') + ';background:' + tint(col, .14) + ';display:flex;align-items:center;justify-content:center;transform:rotate(' + ((i * 17) % 30 - 15) + 'deg)">' + iconSvg(a.icon || 'star', sz, col, 2) + '</div>'; }).join('');
@@ -72,26 +72,26 @@ const PP = {
 };
 function frontCover(title, sub, axes, extraLine) {
   return PP.multiBg() + PP.scatter(axes, 0) +
-    '<div style="position:absolute;left:52px;right:52px;top:210px;background:#fff;border-radius:28px;box-shadow:0 20px 50px rgba(40,25,110,.16);padding:38px 30px;text-align:center">' +
-    '<div style="width:74px;height:74px;margin:0 auto 14px;border-radius:22px;background:linear-gradient(120deg,#5B3DF5,#B23CF0 45%,#FF3D8B 75%,#FFB23F);display:flex;align-items:center;justify-content:center">' + iconSvg('cart', 38, '#fff', 2) + '</div>' +
-    '<h1 style="font-size:30px;font-weight:800">' + h(title) + '</h1>' + (extraLine ? '<div style="margin-top:10px;font-family:Cairo;font-weight:800;font-size:22px;color:#5B3DF5">' + h(extraLine) + '</div>' : '') +
-    '<p style="margin-top:12px;color:#4A4566;font-size:15px">' + h(sub) + '</p><div style="margin-top:16px;font-family:IBM Plex Sans Arabic;font-size:12px;color:#8A85A3" class="num">' + fmtDate(Date.now()) + '</div></div>';
+    '<div style="position:absolute;left:52px;right:52px;top:210px;background:#fff;border-radius:28px;box-shadow:0 20px 50px rgba(20,40,70,.16);padding:38px 30px;text-align:center">' +
+    '<div style="width:74px;height:74px;margin:0 auto 14px;border-radius:22px;background:linear-gradient(120deg,#0093A8,#00A653 45%,#F58220 75%,#FAB20B);display:flex;align-items:center;justify-content:center">' + iconSvg('cart', 38, '#fff', 2) + '</div>' +
+    '<h1 style="font-size:30px;font-weight:800">' + h(title) + '</h1>' + (extraLine ? '<div style="margin-top:10px;font-family:Cairo;font-weight:800;font-size:22px;color:#0093A8">' + h(extraLine) + '</div>' : '') +
+    '<p style="margin-top:12px;color:#4A5470;font-size:15px">' + h(sub) + '</p><div style="margin-top:16px;font-family:IBM Plex Sans Arabic;font-size:12px;color:#7D879C" class="num">' + fmtDate(Date.now()) + '</div></div>';
 }
 function backCover(axes) {
   const p = Content.pdf();
   return PP.multiBg() + PP.scatter(axes.slice().reverse(), 1) +
-    '<div style="position:absolute;left:60px;right:60px;top:250px;background:#fff;border-radius:28px;box-shadow:0 20px 50px rgba(40,25,110,.16);padding:34px 28px;text-align:center">' +
-    '<div style="font-family:IBM Plex Sans Arabic;font-size:12px;font-weight:700;color:#FF3D8B;letter-spacing:.5px">المدرّب</div>' +
-    '<h1 style="font-size:28px;font-weight:800;margin-top:6px">' + h(p.trainerName) + '</h1><div style="margin-top:6px;color:#5B3DF5;font-weight:700;font-family:IBM Plex Sans Arabic">' + h(p.trainerRole) + '</div>' +
-    '<p class="j" style="margin-top:14px;color:#4A4566;font-size:14px">' + h(p.trainerBio) + '</p>' + (p.trainerContact ? '<div style="margin-top:12px;font-family:IBM Plex Sans Arabic;font-weight:700;color:#15122B;direction:ltr">' + h(p.trainerContact) + '</div>' : '') + '</div>';
+    '<div style="position:absolute;left:60px;right:60px;top:250px;background:#fff;border-radius:28px;box-shadow:0 20px 50px rgba(20,40,70,.16);padding:34px 28px;text-align:center">' +
+    '<div style="font-family:IBM Plex Sans Arabic;font-size:12px;font-weight:700;color:#F58220;letter-spacing:.5px">المدرّب</div>' +
+    '<h1 style="font-size:28px;font-weight:800;margin-top:6px">' + h(p.trainerName) + '</h1><div style="margin-top:6px;color:#0093A8;font-weight:700;font-family:IBM Plex Sans Arabic">' + h(p.trainerRole) + '</div>' +
+    '<p class="j" style="margin-top:14px;color:#4A5470;font-size:14px">' + h(p.trainerBio) + '</p>' + (p.trainerContact ? '<div style="margin-top:12px;font-family:IBM Plex Sans Arabic;font-weight:700;color:#1C2340;direction:ltr">' + h(p.trainerContact) + '</div>' : '') + '</div>';
 }
 function tocPages(axes, title) { // توزيع متساوٍ للمحاور على صفحات الفهرس دون قطع أي بطاقة
   const MAX = 5; const pagesN = Math.max(1, Math.ceil(axes.length / MAX)); const base = Math.floor(axes.length / pagesN), extra = axes.length % pagesN;
   const out = []; let k = 0;
   for (let p = 0; p < pagesN; p++) {
     const cnt = base + (p < extra ? 1 : 0); const list = axes.slice(k, k + cnt); k += cnt;
-    out.push('<div style="position:absolute;inset:0;background:#FBFAFF"></div><div style="position:absolute;top:34px;right:34px;left:34px"><div style="font-family:IBM Plex Sans Arabic;font-size:12px;font-weight:700;color:#5B3DF5">' + h(title) + '</div><h2 style="font-size:24px;font-weight:800">فهرس المحتوى' + (pagesN > 1 ? ' <span class="num" style="font-size:14px;color:#8A85A3">(' + (p + 1) + '/' + pagesN + ')</span>' : '') + '</h2></div>' +
-      '<div style="position:absolute;top:104px;right:34px;left:34px;display:flex;flex-direction:column;gap:12px">' + list.map(a => { const col = Content.color(a); return '<div style="display:flex;gap:12px;align-items:flex-start;background:' + tint(col, .08) + ';border-radius:18px;padding:12px 14px;border-right:6px solid ' + col + '"><div style="width:48px;height:48px;border-radius:14px;background:' + col + ';display:flex;align-items:center;justify-content:center;flex:none">' + iconSvg(a.icon || 'star', 26, '#fff') + '</div><div style="flex:1"><div style="font-family:Cairo;font-weight:800;font-size:15.5px">' + h(a.title) + '</div>' + (a.classic ? '<div style="font-family:IBM Plex Sans Arabic;font-size:11.5px;color:#8A85A3">' + h(a.classic) + '</div>' : '') + '<div class="j" style="font-size:11.5px;color:#4A4566;margin-top:3px;max-height:54px;overflow:hidden">' + h(stripHtml(a.desc)) + '</div></div></div>'; }).join('') + '</div>');
+    out.push('<div style="position:absolute;inset:0;background:#F8FBFC"></div><div style="position:absolute;top:34px;right:34px;left:34px"><div style="font-family:IBM Plex Sans Arabic;font-size:12px;font-weight:700;color:#0093A8">' + h(title) + '</div><h2 style="font-size:24px;font-weight:800">فهرس المحتوى' + (pagesN > 1 ? ' <span class="num" style="font-size:14px;color:#7D879C">(' + (p + 1) + '/' + pagesN + ')</span>' : '') + '</h2></div>' +
+      '<div style="position:absolute;top:104px;right:34px;left:34px;display:flex;flex-direction:column;gap:12px">' + list.map(a => { const col = Content.color(a); return '<div style="display:flex;gap:12px;align-items:flex-start;background:' + tint(col, .08) + ';border-radius:18px;padding:12px 14px;border-right:6px solid ' + col + '"><div style="width:48px;height:48px;border-radius:14px;background:' + col + ';display:flex;align-items:center;justify-content:center;flex:none">' + iconSvg(a.icon || 'star', 26, '#fff') + '</div><div style="flex:1"><div style="font-family:Cairo;font-weight:800;font-size:15.5px">' + h(a.title) + '</div>' + (a.classic ? '<div style="font-family:IBM Plex Sans Arabic;font-size:11.5px;color:#7D879C">' + h(a.classic) + '</div>' : '') + '<div class="j" style="font-size:11.5px;color:#4A5470;margin-top:3px;max-height:54px;overflow:hidden">' + h(stripHtml(a.desc)) + '</div></div></div>'; }).join('') + '</div>');
   }
   return out;
 }
@@ -141,13 +141,13 @@ async function buildCongratsPdf(name) {
   try {
     const c = Content.congrats(); const rep = s => String(s || '').replace(/\{\{name\}\}/g, name).replace(/\{\{courseTitle\}\}/g, Content.courseTitle()).replace(/\{\{date\}\}/g, fmtDate(Date.now()));
     const axes = Content.eligibleAxes();
-    const page = PP.multiBg() + '<div style="position:absolute;inset:26px;border-radius:30px;border:3px solid rgba(91,61,245,.25)"></div>' +
+    const page = PP.multiBg() + '<div style="position:absolute;inset:26px;border-radius:30px;border:3px solid rgba(0,147,168,.25)"></div>' +
       axes.slice(0, 8).map((a, i) => { const pos = [[60, 60], [1010, 60], [60, 660], [1010, 660], [300, 40], [770, 690], [40, 360], [1030, 360]][i]; const col = Content.color(a); return '<div style="position:absolute;left:' + pos[0] + 'px;top:' + pos[1] + 'px;width:56px;height:56px;border-radius:18px;background:' + tint(col, .15) + ';display:flex;align-items:center;justify-content:center">' + iconSvg(a.icon, 30, col) + '</div>'; }).join('') +
-      '<div style="position:absolute;left:150px;right:150px;top:100px;bottom:100px;background:#fff;border-radius:30px;box-shadow:0 24px 60px rgba(40,25,110,.16);padding:40px 60px;text-align:center">' +
+      '<div style="position:absolute;left:150px;right:150px;top:100px;bottom:100px;background:#fff;border-radius:30px;box-shadow:0 24px 60px rgba(20,40,70,.16);padding:40px 60px;text-align:center">' +
       '<div style="font-size:60px;line-height:1.1">' + h(c.emoji) + '</div><h1 style="font-size:34px;font-weight:800;margin-top:6px">' + h(rep(c.title)) + '</h1>' +
-      '<div style="font-family:Cairo;font-size:42px;font-weight:800;color:#5B3DF5;margin:14px 0 6px">' + h(name) + '</div>' +
-      c.paragraphs.map(p => '<p style="font-size:18px;color:#4A4566;margin-top:8px;line-height:1.8">' + h(rep(p)) + '</p>').join('') +
-      '<div style="position:absolute;bottom:28px;left:60px;right:60px;display:flex;justify-content:space-between;font-family:IBM Plex Sans Arabic;font-size:15px;color:#4A4566"><span>' + h(rep(c.footerRight)) + '</span><span>' + h(rep(c.footerLeft)) + '</span></div></div>';
+      '<div style="font-family:Cairo;font-size:42px;font-weight:800;color:#0093A8;margin:14px 0 6px">' + h(name) + '</div>' +
+      c.paragraphs.map(p => '<p style="font-size:18px;color:#4A5470;margin-top:8px;line-height:1.8">' + h(rep(p)) + '</p>').join('') +
+      '<div style="position:absolute;bottom:28px;left:60px;right:60px;display:flex;justify-content:space-between;font-family:IBM Plex Sans Arabic;font-size:15px;color:#4A5470"><span>' + h(rep(c.footerRight)) + '</span><span>' + h(rep(c.footerLeft)) + '</span></div></div>';
     const doc = await PDFE.build([page], A4L, (i, n) => pm.set(i, n));
     doc.save('تهنئة إنجاز - ' + name + '.pdf'); pm.close();
   } catch (e) { pm.close(); UI.alert('تعذر إنشاء الملف: ' + h(e.message || e)); }
@@ -164,7 +164,7 @@ function participationOf(uid) {
   return sections;
 }
 function answerPdfHtml(e, p) {
-  if (e.format === 'text') return '<div class="j" style="white-space:pre-wrap;background:#FAF9FE;border:1px solid #E7E3F3;border-radius:12px;padding:10px 12px">' + h(p.text || '') + '</div>';
+  if (e.format === 'text') return '<div class="j" style="white-space:pre-wrap;background:#F7FAFB;border:1px solid #E1E9EC;border-radius:12px;padding:10px 12px">' + h(p.text || '') + '</div>';
   const a = ansList(p.answers, e.items.length);
   return '<div class="nl">' + e.items.map((it, i) => {
     const v = a[i]; let q = '', ans = '', ok = false, corr = '';
@@ -172,20 +172,20 @@ function answerPdfHtml(e, p) {
     else if (e.format === 'truefalse') { q = it.q; ans = v == null ? '—' : ((v === true || v === 'true') ? 'صح' : 'خطأ'); ok = v != null && ((v === true || v === 'true') === !!it.answer); corr = it.answer ? 'صح' : 'خطأ'; }
     else if (e.format === 'fillblank') { q = it.text.replace('___', '____'); ans = v || '—'; ok = v === it.answer; corr = it.answer; }
     else { q = '(أ) ' + it.a + ' — (ب) ' + it.b; ans = v ? '(' + (v === 'a' ? 'أ' : 'ب') + ') ' + it[v] : '—'; ok = v === it.answer; corr = '(' + (it.answer === 'a' ? 'أ' : 'ب') + ') ' + it[it.answer]; }
-    return '<div class="it"><span class="b" style="background:' + (ok ? '#17A864' : '#E5484D') + '">' + (i + 1) + '</span><div style="flex:1"><div style="font-size:.92em;color:#4A4566">' + h(q) + '</div><div style="font-weight:700;color:' + (ok ? '#10573A' : '#A12A2E') + '">' + (ok ? '✓ ' : '✗ ') + h(ans) + (ok ? '' : ' <span style="font-weight:500;color:#10573A">— الصحيح: ' + h(corr) + '</span>') + '</div></div></div>';
+    return '<div class="it"><span class="b" style="background:' + (ok ? '#00A653' : '#E5484D') + '">' + (i + 1) + '</span><div style="flex:1"><div style="font-size:.92em;color:#4A5470">' + h(q) + '</div><div style="font-weight:700;color:' + (ok ? '#10573A' : '#A12A2E') + '">' + (ok ? '✓ ' : '✗ ') + h(ans) + (ok ? '' : ' <span style="font-weight:500;color:#10573A">— الصحيح: ' + h(corr) + '</span>') + '</div></div></div>';
   }).join('') + '</div><div style="margin-top:8px;font-family:IBM Plex Sans Arabic;font-weight:700">النتيجة: ' + exCorrectness(e, a) + ' من ' + e.items.length + '</div>';
 }
 function personPages(uid) {
   const u = Store.users[uid] || {}; const axes = Content.eligibleAxes(); const secs = participationOf(uid);
   const pages = [frontCover(Content.courseTitle(), 'سجل مشاركات المتدرب في تمارين وأنشطة البرنامج', axes, (u.name || '') + ' · سجل مشاركات')];
-  if (!secs.length) { pages.push(PP.multiBg() + '<div style="position:absolute;left:50px;right:50px;top:280px;background:#fff;border-radius:24px;padding:30px;text-align:center;box-shadow:0 16px 40px rgba(40,25,110,.12)"><div style="font-size:40px">🗒️</div><h2 style="margin-top:8px">لا توجد مشاركات مسجلة</h2><p style="margin-top:8px;color:#4A4566">لم يشارك ' + h(u.name || 'هذا المتدرب') + ' في أي تمرين أو نشاط حتى تاريخ إنشاء هذا الملف (' + fmtDate(Date.now()) + ').</p></div>'); return pages; }
+  if (!secs.length) { pages.push(PP.multiBg() + '<div style="position:absolute;left:50px;right:50px;top:280px;background:#fff;border-radius:24px;padding:30px;text-align:center;box-shadow:0 16px 40px rgba(20,40,70,.12)"><div style="font-size:40px">🗒️</div><h2 style="margin-top:8px">لا توجد مشاركات مسجلة</h2><p style="margin-top:8px;color:#4A5470">لم يشارك ' + h(u.name || 'هذا المتدرب') + ' في أي تمرين أو نشاط حتى تاريخ إنشاء هذا الملف (' + fmtDate(Date.now()) + ').</p></div>'); return pages; }
   secs.forEach(sec => {
     pages.push(axisCover(sec.a, sec.sub));
     sec.list.forEach(({ e, r }) => {
       const col = Content.color(sec.a);
       const body = '<div style="display:flex;gap:10px;align-items:center"><span style="font-size:26px">' + h(e.icon || '✍️') + '</span><h2 style="font-size:1.35em;font-weight:800">' + h(e.title) + '</h2></div>' +
-        '<div style="margin-top:6px;font-family:IBM Plex Sans Arabic;font-size:11.5px;color:#8A85A3">' + (e.mode === 'group' ? '👥 جماعي' : '👤 فردي') + ' · ' + h(FORMATS[e.format] || '') + ' · ' + fmtDate(r.p.ts) + '</div>' +
-        (e.scenario ? '<div class="j" style="margin-top:10px;padding:10px 12px;border-radius:12px;background:#FFFBF4;border:1px solid #F4E3EA;font-size:.95em"><b>الموقف: </b>' + stripHtml(e.scenario) + '</div>' : '') +
+        '<div style="margin-top:6px;font-family:IBM Plex Sans Arabic;font-size:11.5px;color:#7D879C">' + (e.mode === 'group' ? '👥 جماعي' : '👤 فردي') + ' · ' + h(FORMATS[e.format] || '') + ' · ' + fmtDate(r.p.ts) + '</div>' +
+        (e.scenario ? '<div class="j" style="margin-top:10px;padding:10px 12px;border-radius:12px;background:#FFFBF4;border:1px solid #F2E4D3;font-size:.95em"><b>الموقف: </b>' + stripHtml(e.scenario) + '</div>' : '') +
         (e.task && e.format === 'text' ? '<div class="j" style="margin-top:8px;font-size:.95em"><b>المطلوب: </b>' + h(stripHtml(e.task)) + '</div>' : '') +
         (r.group ? '<div style="margin-top:10px;display:inline-block;padding:2px 10px;border-radius:999px;background:' + tint(col, .14) + ';font-family:IBM Plex Sans Arabic;font-size:11.5px;font-weight:700">(ضمن ' + h(Groups.label(r.group)) + ')</div>' : '') +
         '<div style="margin-top:10px;font-family:Cairo;font-weight:700;color:' + col + '">إجابة المتدرب</div>' + answerPdfHtml(e, r.p);
@@ -243,17 +243,17 @@ async function saveMemberCard(me) {
   try {
     await document.fonts.ready;
     const W = 1000, H = 600; const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const c = cv.getContext('2d');
-    const g = c.createLinearGradient(0, 0, W, H); g.addColorStop(0, '#5B3DF5'); g.addColorStop(.5, '#B23CF0'); g.addColorStop(.78, '#FF3D8B'); g.addColorStop(1, '#FFB23F');
+    const g = c.createLinearGradient(0, 0, W, H); g.addColorStop(0, '#0093A8'); g.addColorStop(.5, '#00A653'); g.addColorStop(.78, '#F58220'); g.addColorStop(1, '#FAB20B');
     c.fillStyle = g; c.fillRect(0, 0, W, H);
     c.fillStyle = 'rgba(255,255,255,.12)'; [[880, 90, 150], [120, 540, 190], [540, 20, 80]].forEach(([x, y, r]) => { c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill(); });
     c.fillStyle = '#fff'; const rr = (x, y, w, hh, r) => { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + hh, r); c.arcTo(x + w, y + hh, x, y + hh, r); c.arcTo(x, y + hh, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); };
     rr(60, 70, W - 120, H - 140, 36); c.fill();
-    c.direction = 'rtl'; c.textAlign = 'right'; c.fillStyle = '#5B3DF5'; c.font = '700 26px "IBM Plex Sans Arabic", sans-serif'; c.fillText(Content.courseTitle(), W - 110, 140);
-    c.fillStyle = '#15122B'; c.font = '800 54px Cairo, sans-serif'; c.fillText(me.name, W - 110, 250);
-    c.fillStyle = '#4A4566'; c.font = '500 28px "IBM Plex Sans Arabic", sans-serif'; c.fillText(me.role || '', W - 110, 305);
-    c.fillStyle = '#8A85A3'; c.font = '700 22px "IBM Plex Sans Arabic", sans-serif'; c.fillText('رقم العضوية', W - 110, 400);
-    c.direction = 'ltr'; c.textAlign = 'right'; c.fillStyle = '#15122B'; c.font = '800 76px Cairo, sans-serif'; c.fillText(pad4(me.member || 0), W - 110, 480);
-    c.textAlign = 'left'; c.direction = 'rtl'; c.fillStyle = '#8A85A3'; c.font = '500 20px "IBM Plex Sans Arabic", sans-serif'; c.fillText('ادخل به من أي جهاز: «مسجّل مسبقًا؟ الدخول برقم العضوية»', 110, 480);
+    c.direction = 'rtl'; c.textAlign = 'right'; c.fillStyle = '#0093A8'; c.font = '700 26px "IBM Plex Sans Arabic", sans-serif'; c.fillText(Content.courseTitle(), W - 110, 140);
+    c.fillStyle = '#1C2340'; c.font = '800 54px Cairo, sans-serif'; c.fillText(me.name, W - 110, 250);
+    c.fillStyle = '#4A5470'; c.font = '500 28px "IBM Plex Sans Arabic", sans-serif'; c.fillText(me.role || '', W - 110, 305);
+    c.fillStyle = '#7D879C'; c.font = '700 22px "IBM Plex Sans Arabic", sans-serif'; c.fillText('رقم العضوية', W - 110, 400);
+    c.direction = 'ltr'; c.textAlign = 'right'; c.fillStyle = '#1C2340'; c.font = '800 76px Cairo, sans-serif'; c.fillText(pad4(me.member || 0), W - 110, 480);
+    c.textAlign = 'left'; c.direction = 'rtl'; c.fillStyle = '#7D879C'; c.font = '500 20px "IBM Plex Sans Arabic", sans-serif'; c.fillText('ادخل به من أي جهاز: «مسجّل مسبقًا؟ الدخول برقم العضوية»', 110, 480);
     await new Promise(res => cv.toBlob(b => { downloadBlob(b, 'رقم العضوية ' + pad4(me.member || 0) + '.png'); res(); }, 'image/png'));
     UI.toast('✅ تم حفظ بطاقة رقم العضوية على جهازك');
   } catch (e) { UI.alert('تعذر حفظ البطاقة: ' + h(e.message || e)); }

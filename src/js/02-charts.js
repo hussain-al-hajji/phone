@@ -17,7 +17,7 @@ const Charts = (function () {
   // تقدير عدد الأسطر (تقدير محافظ لعرض الحرف العربي)
   function lines(text, width, fs) { const cpl = Math.max(4, Math.floor((width - 16) / (fs * 0.56))); let n = 0; String(text || '').split('\n').forEach(p => { n += Math.max(1, Math.ceil(p.length / cpl)); }); return n; }
   function fo(x, y, w, hh, inner, o = {}) {
-    const fs = o.fs || 15, color = o.color || '#15122B', weight = o.weight || 600, align = o.align || 'right';
+    const fs = o.fs || 15, color = o.color || '#1C2340', weight = o.weight || 600, align = o.align || 'right';
     return '<foreignObject x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + Math.max(10, w).toFixed(1) + '" height="' + Math.max(10, hh).toFixed(1) + '">' +
       '<div xmlns="http://www.w3.org/1999/xhtml" dir="rtl" style="width:100%;height:100%;display:flex;flex-direction:column;justify-content:' + (o.valign || 'center') + ';box-sizing:border-box;padding:' + (o.pad == null ? '4px 10px' : o.pad) + ';font-family:' + FONT + ';font-size:' + fs + 'px;line-height:1.55;color:' + color + ';font-weight:' + weight + ';overflow:hidden">' +
       '<div style="width:100%;text-align:' + align + ';word-wrap:break-word">' + inner + '</div></div></foreignObject>';
@@ -27,16 +27,16 @@ const Charts = (function () {
       '<defs><marker id="ah' + c.id + '" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="' + c.dark + '"/></marker></defs>' + body + '</svg>';
   }
   let uid = 0;
-  function ctx(color) { color = color || '#6D4AFF'; uid++; return { id: 'c' + uid + Math.random().toString(36).slice(2, 5), color, dark: shadeC(color, -0.25), light: tintC(color, 0.12), mid: tintC(color, 0.28) }; }
+  function ctx(color) { color = color || '#0093A8'; uid++; return { id: 'c' + uid + Math.random().toString(36).slice(2, 5), color, dark: shadeC(color, -0.25), light: tintC(color, 0.12), mid: tintC(color, 0.28) }; }
   function shadeC(hex, amt) { let c = hex.replace('#', ''); const n = parseInt(c, 16); let r = n >> 16, g = (n >> 8) & 255, b = n & 255; const f = v => Math.max(0, Math.min(255, Math.round(amt < 0 ? v * (1 + amt) : v + (255 - v) * amt))); return 'rgb(' + f(r) + ',' + f(g) + ',' + f(b) + ')'; }
   function tintC(hex, a) { let c = hex.replace('#', ''); const n = parseInt(c, 16); return 'rgba(' + (n >> 16) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')'; }
   const arrow = (x1, y1, x2, y2, c, dash) => '<line x1="' + x1.toFixed(1) + '" y1="' + y1.toFixed(1) + '" x2="' + x2.toFixed(1) + '" y2="' + y2.toFixed(1) + '" stroke="' + c.dark + '" stroke-width="2.4"' + (dash ? ' stroke-dasharray="5 5"' : '') + ' marker-end="url(#ah' + c.id + ')"/>';
   const rect = (x, y, w, hh, fill, stroke, r = 14, extra = '') => '<rect x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + w.toFixed(1) + '" height="' + hh.toFixed(1) + '" rx="' + r + '" fill="' + fill + '"' + (stroke ? ' stroke="' + stroke + '" stroke-width="1.6"' : '') + extra + '/>';
   const badge = (cx, cy, n, c, r = 13) => '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="' + c.color + '" stroke="#fff" stroke-width="2.5"/>' + '<text x="' + cx + '" y="' + (cy + 4.8) + '" text-anchor="middle" font-family="Arial,sans-serif" font-size="13" font-weight="700" fill="#fff">' + n + '</text>';
   const fmtNum = v => { const n = Number(v); return isFinite(n) ? n.toLocaleString('en-US') : esc(v); };
-  const itemHtml = (it, fs) => esc(it.label) + (it.desc ? '<div style="font-weight:400;color:#4A4566;font-size:' + (fs - 2) + 'px;margin-top:2px">' + esc(it.desc) + '</div>' : '');
+  const itemHtml = (it, fs) => esc(it.label) + (it.desc ? '<div style="font-weight:400;color:#4A5470;font-size:' + (fs - 2) + 'px;margin-top:2px">' + esc(it.desc) + '</div>' : '');
   const boxFill = (it, c) => it.danger ? ['#FDECEC', '#E5484D'] : it.hi ? [c.color, c.color] : ['#FFFFFF', c.mid];
-  const boxInk = (it) => it.hi ? '#FFFFFF' : it.danger ? '#A12A2E' : '#15122B';
+  const boxInk = (it) => it.hi ? '#FFFFFF' : it.danger ? '#A12A2E' : '#1C2340';
 
   // ---------- flow (أفقي متعرّج من اليمين) ----------
   function flow(items, c) {
@@ -108,7 +108,7 @@ const Charts = (function () {
       const s = split(it);
       body += rect(x, y, cw, ch, c.light, c.mid, 18);
       body += rect(x, y, cw, 6, c.color, null, 3);
-      const inner = (s.emo ? '<div style="font-size:26px;line-height:1.2;margin-bottom:4px">' + esc(s.emo) + '</div>' : '') + '<div style="font-weight:700">' + esc(s.text) + '</div>' + (it.desc ? '<div style="font-weight:400;font-size:13px;color:#4A4566">' + esc(it.desc) + '</div>' : '');
+      const inner = (s.emo ? '<div style="font-size:26px;line-height:1.2;margin-bottom:4px">' + esc(s.emo) + '</div>' : '') + '<div style="font-weight:700">' + esc(s.text) + '</div>' + (it.desc ? '<div style="font-weight:400;font-size:13px;color:#4A5470">' + esc(it.desc) + '</div>' : '');
       body += fo(x, y + 4, cw, ch - 4, inner, { fs: 15, pad: '6px 12px' });
     });
     return svgWrap(12 + rows * ch + (rows - 1) * gap, body, c);
@@ -118,7 +118,7 @@ const Charts = (function () {
     const groups = items.map(g => { const i = g.indexOf('::'); return { title: (i > -1 ? g.slice(0, i) : g).trim(), list: (i > -1 ? g.slice(i + 2) : '').split(';').map(s => s.trim()).filter(Boolean) }; }).slice(0, 2);
     while (groups.length < 2) groups.push({ title: '', list: [] });
     const cw = 262, vs = 36; const xs = [W - 6 - cw, 6];
-    const cols2 = [c.color, '#15122B'];
+    const cols2 = [c.color, '#1C2340'];
     let body = '', maxH = 0;
     groups.forEach((g, gi) => {
       const x = xs[gi]; let y = 58;
@@ -127,7 +127,7 @@ const Charts = (function () {
     });
     groups.forEach((g, gi) => {
       const x = xs[gi]; const col = cols2[gi];
-      body += rect(x, 4, cw, maxH + 6, gi === 0 ? c.light : '#F4F2FA', gi === 0 ? c.mid : '#E3DFF0', 20);
+      body += rect(x, 4, cw, maxH + 6, gi === 0 ? c.light : '#F0F4F6', gi === 0 ? c.mid : '#DDE6EA', 20);
       body += rect(x, 4, cw, 46, col, null, 20) + rect(x, 30, cw, 20, col, null, 0);
       body += fo(x, 4, cw, 46, esc(g.title), { color: '#fff', fs: 16, weight: 700, pad: '4px 14px' });
       let y = 58;
@@ -200,7 +200,7 @@ const Charts = (function () {
         body += rect(x, y, cw, rh, '#fff', c.mid, 16);
         body += rect(x + cw - 46, y, 46, rh, c.light, null, 16);
         body += badge(x + cw - 23, y + rh / 2, r * cols + k + 1, c, 14);
-        body += fo(x, y, cw - 50, rh, '<div style="font-weight:700">' + esc(it.label) + '</div>' + (it.desc ? '<div style="font-weight:400;color:#4A4566;font-size:13.5px">' + esc(it.desc) + '</div>' : ''), { fs: 15, pad: '4px 12px' });
+        body += fo(x, y, cw - 50, rh, '<div style="font-weight:700">' + esc(it.label) + '</div>' + (it.desc ? '<div style="font-weight:400;color:#4A5470;font-size:13.5px">' + esc(it.desc) + '</div>' : ''), { fs: 15, pad: '4px 12px' });
       });
       y += rh + gap;
     }
@@ -223,7 +223,7 @@ const Charts = (function () {
       const vtxt = (v > 0 && neg ? '+' : '') + v;
       body += '<text x="' + (v >= 0 ? tx - 6 : tx + 6).toFixed(1) + '" y="' + (y + rh / 2 + 5) + '" text-anchor="' + (v >= 0 ? 'end' : 'start') + '" font-family="Arial,sans-serif" font-size="14" font-weight="700" fill="' + col + '">' + esc(vtxt) + (neg ? '%' : '') + '</text>';
     });
-    if (neg) body += '<line x1="' + zeroX + '" y1="0" x2="' + zeroX + '" y2="' + (its.length * (rh + gap)) + '" stroke="#8A85A3" stroke-width="1.5" stroke-dasharray="3 3"/>';
+    if (neg) body += '<line x1="' + zeroX + '" y1="0" x2="' + zeroX + '" y2="' + (its.length * (rh + gap)) + '" stroke="#7D879C" stroke-width="1.5" stroke-dasharray="3 3"/>';
     return svgWrap(8 + its.length * (rh + gap), body, c);
   }
   // ---------- matrix 2×2 ----------
@@ -233,8 +233,8 @@ const Charts = (function () {
     const pos = [[gx + cw, gy], [gx, gy], [gx + cw, gy + chh], [gx, gy + chh]];
     q.forEach((it, i) => {
       const [x, y] = pos[i]; const good = /✓/.test(it.label);
-      body += rect(x + 4, y + 4, cw - 8, chh - 8, good ? c.color : (i < 2 ? c.light : '#F4F2FA'), good ? null : c.mid, 16);
-      body += fo(x + 4, y + 4, cw - 8, chh - 8, esc(it.label), { color: good ? '#fff' : '#15122B', fs: 15, weight: 700, align: 'center' });
+      body += rect(x + 4, y + 4, cw - 8, chh - 8, good ? c.color : (i < 2 ? c.light : '#F0F4F6'), good ? null : c.mid, 16);
+      body += fo(x + 4, y + 4, cw - 8, chh - 8, esc(it.label), { color: good ? '#fff' : '#1C2340', fs: 15, weight: 700, align: 'center' });
     });
     body += arrow(W - 6, gy + 2 * chh + 16, gx + 4, gy + 2 * chh + 16, c);
     body += fo(gx, gy + 2 * chh + 20, W - gx - 6, 30, esc(xl) + ' ←', { fs: 13, weight: 700, color: c.dark, align: 'center' });
@@ -245,10 +245,10 @@ const Charts = (function () {
   // ---------- balance (ميزان) ----------
   function balance(items, c) {
     const a = parseItem(items[0]), b = parseItem(items[1] || ''); let body = '';
-    body += '<path d="M300 40 L300 190" stroke="#15122B" stroke-width="6" stroke-linecap="round"/><path d="M250 196 H350" stroke="#15122B" stroke-width="8" stroke-linecap="round"/>';
-    body += '<path d="M110 62 L490 62" stroke="#15122B" stroke-width="5" stroke-linecap="round"/><circle cx="300" cy="40" r="12" fill="' + c.color + '"/>';
-    body += '<path d="M150 62 L100 130 M150 62 L200 130 M450 62 L400 130 M450 62 L500 130" stroke="#8A85A3" stroke-width="2"/>';
-    body += '<path d="M80 130 Q150 170 220 130 Z" fill="' + c.color + '"/><path d="M380 130 Q450 170 520 130 Z" fill="#15122B"/>';
+    body += '<path d="M300 40 L300 190" stroke="#1C2340" stroke-width="6" stroke-linecap="round"/><path d="M250 196 H350" stroke="#1C2340" stroke-width="8" stroke-linecap="round"/>';
+    body += '<path d="M110 62 L490 62" stroke="#1C2340" stroke-width="5" stroke-linecap="round"/><circle cx="300" cy="40" r="12" fill="' + c.color + '"/>';
+    body += '<path d="M150 62 L100 130 M150 62 L200 130 M450 62 L400 130 M450 62 L500 130" stroke="#7D879C" stroke-width="2"/>';
+    body += '<path d="M80 130 Q150 170 220 130 Z" fill="' + c.color + '"/><path d="M380 130 Q450 170 520 130 Z" fill="#1C2340"/>';
     body += fo(40, 150, 220, 70, esc(a.label), { fs: 16, weight: 700, align: 'center', color: c.dark });
     body += fo(340, 150, 220, 70, esc(b.label), { fs: 16, weight: 700, align: 'center' });
     body += '<text x="300" y="120" text-anchor="middle" font-size="26">⚖️</text>';
@@ -257,12 +257,12 @@ const Charts = (function () {
   // ---------- timeline (مبكر/مناسب/متأخر) ----------
   function timeline(items, c) {
     const its = items.map(parseItem); const n = its.length; let body = '';
-    body += '<line x1="30" y1="70" x2="570" y2="70" stroke="#E3DFF0" stroke-width="10" stroke-linecap="round"/>';
+    body += '<line x1="30" y1="70" x2="570" y2="70" stroke="#DDE6EA" stroke-width="10" stroke-linecap="round"/>';
     its.forEach((it, i) => {
       const cxp = W - 60 - i * ((W - 120) / Math.max(1, n - 1));
       body += '<circle cx="' + cxp + '" cy="70" r="' + (it.hi ? 22 : 15) + '" fill="' + (it.hi ? c.color : '#E5484D') + '" stroke="#fff" stroke-width="4"/>';
       body += fo(cxp - 90, 8, 180, 44, esc(it.label), { fs: it.hi ? 16 : 14.5, weight: 700, align: 'center', color: it.hi ? c.dark : '#A12A2E' });
-      body += fo(cxp - 90, 96, 180, 48, esc(it.desc), { fs: 13.5, weight: 500, align: 'center', color: '#4A4566' });
+      body += fo(cxp - 90, 96, 180, 48, esc(it.desc), { fs: 13.5, weight: 500, align: 'center', color: '#4A5470' });
     });
     return svgWrap(150, body, c);
   }
@@ -270,7 +270,7 @@ const Charts = (function () {
   function gap(items, c) {
     const [top, g, bottom, result] = items.map(s => parseItem(s).label); let body = '';
     body += rect(150, 10, 430, 48, c.color, null, 14) + fo(150, 10, 430, 48, esc(top), { color: '#fff', fs: 16, weight: 700 });
-    body += rect(290, 120, 290, 48, '#15122B', null, 14) + fo(290, 120, 290, 48, esc(bottom), { color: '#fff', fs: 16, weight: 700 });
+    body += rect(290, 120, 290, 48, '#1C2340', null, 14) + fo(290, 120, 290, 48, esc(bottom), { color: '#fff', fs: 16, weight: 700 });
     body += '<line x1="220" y1="64" x2="220" y2="114" stroke="#E5484D" stroke-width="3" stroke-dasharray="5 4" marker-end="url(#ah' + c.id + ')"/>';
     body += fo(10, 66, 200, 46, '↕ ' + esc(g), { color: '#E5484D', fs: 15, weight: 800 });
     if (result) { body += arrow(284, 144, 200, 144, c); body += rect(10, 120, 186, 48, '#FDECEC', '#E5484D', 14) + fo(10, 120, 186, 48, esc(result), { color: '#A12A2E', fs: 14, weight: 700 }); }
@@ -297,7 +297,7 @@ const Charts = (function () {
   function tree(items, c) {
     const root = parseItem(items[0]).label; const br = items.slice(1).map(parseItem); const n = br.length;
     const bw = (W - 12 - 12 * (n - 1)) / n; const rw = 300; let body = '';
-    body += rect((W - rw) / 2, 6, rw, 50, '#15122B', null, 16) + fo((W - rw) / 2, 6, rw, 50, esc(root), { color: '#fff', fs: 16, weight: 800, align: 'center' });
+    body += rect((W - rw) / 2, 6, rw, 50, '#1C2340', null, 16) + fo((W - rw) / 2, 6, rw, 50, esc(root), { color: '#fff', fs: 16, weight: 800, align: 'center' });
     const bh = Math.max(46, ...br.map(b => lines(b.label, bw, 14.5) * 22 + 14)); const rh2 = Math.max(56, ...br.map(b => lines(b.desc, bw, 14) * 22 + 14));
     br.forEach((b, i) => {
       const x = W - 6 - bw - i * (bw + 12); const mx = x + bw / 2;
