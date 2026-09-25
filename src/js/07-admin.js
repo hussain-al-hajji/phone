@@ -261,7 +261,7 @@ function exFormHtml(kind) {
   if (!isSurvey) {
     out += '<div class="field" id="hintField" ' + (fmt === 'text' ? 'style="display:none"' : '') + '><label>💡 تلميح عام (يحل محل «المطلوب» في النماذج التفاعلية)</label>' + RTE.html('exHint', e.hint) + '</div>';
     if (!isAct) out += '<div class="field"><label>🎯 لماذا هذا النشاط؟</label><textarea id="exWhy" data-keep="ex-why" rows="2">' + h(stripHtml(e.why || '')) + '</textarea></div>';
-    out += '<div class="field"><label>🧩 النموذج المساعد' + (isAct ? ' (اختياري)' : '') + '</label>' + RTE.html('exModel', e.model) + '</div>';
+    out += '<div class="field" id="modelField" ' + (fmt !== 'text' ? 'style="display:none"' : '') + '><label>🧩 النموذج المساعد' + (isAct ? ' (اختياري)' : '') + '</label>' + RTE.html('exModel', e.model) + '<span class="help">مثال موجز يقرّب الفكرة دون أن يعطي الإجابة. لا يظهر في النماذج التفاعلية.</span></div>';
     out += '<div class="field"><label>صورة (اختيارية — تظهر أعلى صفحته)</label>' + ImgPick.html('exImg', e.image) + '</div>';
     out += '<div id="itemsEd">' + itemsEditorHtml(fmt, FormState.items) + '</div>';
   }
@@ -277,6 +277,7 @@ function exFormAfter(root) {
     const m = $('#exMode', root); const lk = FORMAT_MODE[f.value];
     if (lk) { m.value = lk; m.disabled = true; } else m.disabled = false;
     const hf = $('#hintField', root); if (hf) hf.style.display = f.value === 'text' ? 'none' : '';
+    const mf = $('#modelField', root); if (mf) mf.style.display = f.value === 'text' ? '' : 'none';
     if (!FormState.items.length && f.value !== 'text') FormState.items = [{}];
     $('#itemsEd', root).innerHTML = itemsEditorHtml(f.value, FormState.items);
     const help = m.parentNode.querySelector('.help'); if (help) help.remove();
@@ -290,7 +291,7 @@ async function exFormSave(root, kind) {
   if (!data.title) { UI.alert('اكتب عنوانًا أولًا.'); return; }
   if (kind !== 'survey') {
     data.format = fmt; data.mode = FORMAT_MODE[fmt] || $('#exMode', root).value;
-    data.scenario = RTE.val(root, 'exScenario'); data.hint = RTE.val(root, 'exHint'); data.model = RTE.val(root, 'exModel'); data.image = ImgPick.val('exImg');
+    data.scenario = RTE.val(root, 'exScenario'); data.hint = RTE.val(root, 'exHint'); data.model = fmt === 'text' ? RTE.val(root, 'exModel') : ''; data.image = ImgPick.val('exImg');
     if ($('#exPrinciple', root)) { data.principle = $('#exPrinciple', root).value.trim(); data.steps = $('#exSteps', root).value.split('\n').map(x => x.trim()).filter(Boolean); data.why = $('#exWhy', root).value.trim(); }
     data.items = fmt === 'text' ? [] : collectItems(root, fmt).filter(it => it.q || it.text || it.a);
     if (fmt !== 'text' && !data.items.length) { UI.alert('أضف عنصرًا واحدًا على الأقل للنموذج التفاعلي.'); return; }
