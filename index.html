@@ -131,11 +131,15 @@ ul,ol{margin:.3em 0;padding-inline-start:1.3em}
 .axis-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:18px}
 .axis-card{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:24px;overflow:hidden;cursor:pointer;display:flex;flex-direction:column;transition:transform .18s,box-shadow .18s;box-shadow:var(--sh-1);text-align:start}
 .axis-card:hover{transform:translateY(-3px);box-shadow:var(--sh-2)}
-.axis-art{position:relative;height:150px;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.axis-art{position:relative;height:170px;overflow:hidden;display:flex;align-items:center;justify-content:center;padding-top:34px}
 .axis-art img{width:100%;height:100%;object-fit:cover}
 .axis-art .decor{position:absolute;inset:0}
 .axis-art .axis-icon{position:relative;width:76px;height:76px;border-radius:22px;background:rgba(255,255,255,.22);border:1px solid rgba(255,255,255,.4);display:flex;align-items:center;justify-content:center;backdrop-filter:blur(2px)}
-.axis-no{position:absolute;top:12px;inset-inline-start:12px;background:rgba(255,255,255,.92);color:var(--ink);font-family:var(--f-ui);font-weight:700;font-size:12px;padding:3px 10px;border-radius:999px}
+.axis-no{position:absolute;top:12px;inset-inline-start:12px;max-width:calc(100% - 24px);background:rgba(255,255,255,.92);color:var(--ink);font-family:var(--f-ui);font-weight:700;font-size:11.5px;line-height:1.5;padding:4px 11px;border-radius:14px}
+.unit-head{grid-column:1/-1;display:flex;flex-direction:column;gap:2px;padding:8px 16px 8px 0;margin-top:14px;border-inline-start:6px solid var(--brand);border-image:var(--grad) 1}
+.unit-head:first-child{margin-top:0}
+.unit-head .unit-no{font-family:var(--f-ui);font-size:12.5px;font-weight:700;color:var(--brand)}
+.unit-head h3{font-size:clamp(17px,2.2vw,21px);font-weight:800}
 .axis-body{padding:16px 18px 18px;display:flex;flex-direction:column;gap:6px;flex:1}
 .axis-title{font-size:18px;font-weight:800}
 .axis-classic{font-family:var(--f-ui);font-size:13px;color:var(--ink-3);line-height:1.6}
@@ -498,7 +502,8 @@ const MAX_IMG_MB = 5;
 const DEFAULT_GROUPS = 6;
 
 const AXIS_COLORS = ['#6D4AFF','#0FB5A6','#FF7A1A','#FF3D8B','#2F7BFF','#9333EA','#0891B2','#16A34A','#D97706','#E11D48','#4F46E5','#059669','#DB2777','#0284C7','#CA8A04','#7C3AED'];
-const UNIT_NAMES = {1:'الوحدة 1',2:'الوحدة 2',3:'الوحدة 3',4:'الوحدة 4',5:'الوحدة 5',6:'فصل خاص'};
+const UNIT_NAMES = {1:'فهم سلوك المستخدم وبناء تجربة شراء فعّالة',2:'إدارة التسويق داخل تطبيقات التجارة عبر الهاتف المحمول وربطه بسلوك المستخدم',3:'تصميم بنية التطبيق وتنظيم المحتوى لرفع كفاءة التحويل',4:'تحسين تجربة الدفع وتعزيز الثقة لرفع معدل الإتمام',5:'إدارة وتحسين أداء تطبيقات التجارة عبر الهاتف المحمول بشكل مستمر',6:'الذكاء الاصطناعي والتجارة عبر الهاتف المحمول'};
+const UNIT_KICKERS = {1:'الوحدة الأولى',2:'الوحدة الثانية',3:'الوحدة الثالثة',4:'الوحدة الرابعة',5:'الوحدة الخامسة',6:'فصل خاص'};
 const SLIDE_TYPES = {opening:'افتتاحية',principle:'مبدأ علمي',examples:'أمثلة',mistakes:'أخطاء وتصحيحات',tools:'أدوات',summary:'خلاصة'};
 const FORMATS = {text:'نصية حرة',mcq:'اختيار من متعدد',truefalse:'صح أم خطأ',fillblank:'إكمال الفراغ',comparePairs:'مقارنة نقيضين'};
 const FORMAT_MODE = {mcq:'individual',truefalse:'individual',fillblank:'group',comparePairs:'group'};
@@ -1605,7 +1610,7 @@ Views.home = {
     if (acts.length) out += '<section class="section"><div class="sec-head"><div><div class="sec-kicker">قبل أن نبدأ</div><h2 class="sec-title">⚡ أنشطة</h2></div></div><div class="act-grid">' +
       acts.map(e => '<button class="act-card" data-go="ex" data-id="' + h(e.id) + '"><div class="act-ico">' + h(e.icon || '✨') + '</div><div><h3>' + h(e.title) + '</h3><div class="muted" style="font-size:13.5px;font-family:var(--f-ui)">' + h(stripHtml(e.scenario || e.task).slice(0, 80)) + '…</div></div></button>').join('') + '</div></section>';
     out += '<section class="section"><div class="sec-head"><div><div class="sec-kicker">خارطة الدورة</div><h2 class="sec-title">🗺️ محاور الدورة</h2></div><span class="pill">اضغط أي محور لفتح شرائحه وتمارينه</span></div><div class="axis-grid">' +
-      axes.map((a, i) => { const exs = Content.exercisesOf(a.id).length; return '<button class="axis-card ' + (a._disabled ? 'disabled' : '') + '" data-act="open-axis" data-id="' + h(a.id) + '">' + (a._disabled ? '<span class="soon-badge">قريبًا</span>' : '') + axisArt(a) + '<span class="axis-no">' + h(UNIT_NAMES[a.unit] || 'محور إضافي') + '</span><div class="axis-body"><div class="axis-title">' + h(a.title) + '</div>' + (a.classic ? '<div class="axis-classic">' + h(a.classic) + '</div>' : '') + '<div class="axis-desc">' + richHtml(a.desc) + '</div><div class="axis-meta"><span class="pill">🎞️ <span class="num">' + a.slides.length + '</span> شريحة</span><span class="pill">✍️ <span class="num">' + exs + '</span> تمرين</span>' + (a.duration ? '<span class="pill">⏱ ' + h(a.duration) + '</span>' : '') + '</div></div></button>'; }).join('') + '</div></section>';
+      axes.map((a, i) => { const unitHead = (i === 0 || axes[i - 1].unit !== a.unit) ? '<div class="unit-head"><span class="unit-no">' + h(UNIT_KICKERS[a.unit] || 'محاور إضافية') + '</span><h3>' + h(UNIT_NAMES[a.unit] || 'محاور أُضيفت للدورة') + '</h3></div>' : ''; const exs = Content.exercisesOf(a.id).length; return unitHead + '<button class="axis-card ' + (a._disabled ? 'disabled' : '') + '" data-act="open-axis" data-id="' + h(a.id) + '">' + (a._disabled ? '<span class="soon-badge">قريبًا</span>' : '') + axisArt(a) + '<span class="axis-no">' + h(UNIT_NAMES[a.unit] || 'محور إضافي') + '</span><div class="axis-body"><div class="axis-title">' + h(a.title) + '</div>' + (a.classic ? '<div class="axis-classic">' + h(a.classic) + '</div>' : '') + '<div class="axis-desc">' + richHtml(a.desc) + '</div><div class="axis-meta"><span class="pill">🎞️ <span class="num">' + a.slides.length + '</span> شريحة</span><span class="pill">✍️ <span class="num">' + exs + '</span> تمرين</span>' + (a.duration ? '<span class="pill">⏱ ' + h(a.duration) + '</span>' : '') + '</div></div></button>'; }).join('') + '</div></section>';
     out += '<section class="section"><div class="lab-banner" data-go="lab">' + '<div class="lab-ico">🧪</div><div class="grow"><div class="sec-kicker" style="color:#FFB9D5">مشروع تطبيقي شامل · 60 دقيقة</div><h3>' + h(COURSE.lab.title) + '</h3><p>6 مراحل بمؤقّت حي لكل مجموعة، تجمع كل محاور الدورة في خطة تحسين واحدة.</p></div><span class="btn btn-primary">ادخل المختبر ←</span></div></section>';
     if (survey) out += '<section class="section"><div class="sec-head"><div><div class="sec-kicker">نهاية الرحلة</div><h2 class="sec-title">🎓 ختام البرنامج</h2></div></div><button class="act-card" style="width:100%" data-go="ex" data-id="' + h(survey.id) + '"><div class="act-ico">' + h(survey.icon || '💬') + '</div><div><h3>' + h(survey.title) + '</h3><div class="muted" style="font-family:var(--f-ui);font-size:14px">' + h(stripHtml(survey.task)) + '</div></div></button></section>';
     return out;
