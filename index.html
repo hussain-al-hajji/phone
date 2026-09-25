@@ -14,7 +14,7 @@
 <title>التحول التجاري عبر الهاتف المحمول</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Alexandria:wght@500;700;800&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
 <style>
@@ -38,7 +38,7 @@
   --r-xl:28px; --r-lg:20px; --r-md:14px; --r-sm:10px;
   --sh-1:0 1px 2px rgba(30,20,80,.05),0 4px 14px rgba(40,25,110,.06);
   --sh-2:0 18px 44px rgba(40,25,110,.14);
-  --f-display:'Alexandria',sans-serif;
+  --f-display:'Cairo',sans-serif;
   --f-ui:'IBM Plex Sans Arabic',sans-serif;
   --f-body:'Noto Sans Arabic','IBM Plex Sans Arabic',sans-serif;
   --grad:linear-gradient(120deg,#5B3DF5 0%,#B23CF0 45%,#FF3D8B 75%,#FFB23F 100%);
@@ -2242,7 +2242,7 @@ const CDN = {
 const PDF_CSS = `
 .pp{position:relative;overflow:hidden;background:#fff;font-size:14px;font-family:'Noto Sans Arabic','IBM Plex Sans Arabic',sans-serif;color:#15122B;direction:rtl;box-sizing:border-box}
 .pp *{box-sizing:border-box}
-.pp h1,.pp h2,.pp h3{font-family:'Alexandria',sans-serif;margin:0;line-height:1.35}
+.pp h1,.pp h2,.pp h3{font-family:'Cairo',sans-serif;margin:0;line-height:1.35}
 .pp .j{text-align:justify;text-justify:inter-word}
 .pp .fit{position:absolute;overflow:hidden}
 .pp .num{direction:ltr;unicode-bidi:isolate}
@@ -2306,7 +2306,7 @@ function frontCover(title, sub, axes, extraLine) {
   return PP.multiBg() + PP.scatter(axes, 0) +
     '<div style="position:absolute;left:52px;right:52px;top:210px;background:#fff;border-radius:28px;box-shadow:0 20px 50px rgba(40,25,110,.16);padding:38px 30px;text-align:center">' +
     '<div style="width:74px;height:74px;margin:0 auto 14px;border-radius:22px;background:linear-gradient(120deg,#5B3DF5,#B23CF0 45%,#FF3D8B 75%,#FFB23F);display:flex;align-items:center;justify-content:center">' + iconSvg('cart', 38, '#fff', 2) + '</div>' +
-    '<h1 style="font-size:30px;font-weight:800">' + h(title) + '</h1>' + (extraLine ? '<div style="margin-top:10px;font-family:Alexandria;font-weight:800;font-size:22px;color:#5B3DF5">' + h(extraLine) + '</div>' : '') +
+    '<h1 style="font-size:30px;font-weight:800">' + h(title) + '</h1>' + (extraLine ? '<div style="margin-top:10px;font-family:Cairo;font-weight:800;font-size:22px;color:#5B3DF5">' + h(extraLine) + '</div>' : '') +
     '<p style="margin-top:12px;color:#4A4566;font-size:15px">' + h(sub) + '</p><div style="margin-top:16px;font-family:IBM Plex Sans Arabic;font-size:12px;color:#8A85A3" class="num">' + fmtDate(Date.now()) + '</div></div>';
 }
 function backCover(axes) {
@@ -2323,7 +2323,7 @@ function tocPages(axes, title) { // توزيع متساوٍ للمحاور عل�
   for (let p = 0; p < pagesN; p++) {
     const cnt = base + (p < extra ? 1 : 0); const list = axes.slice(k, k + cnt); k += cnt;
     out.push('<div style="position:absolute;inset:0;background:#FBFAFF"></div><div style="position:absolute;top:34px;right:34px;left:34px"><div style="font-family:IBM Plex Sans Arabic;font-size:12px;font-weight:700;color:#5B3DF5">' + h(title) + '</div><h2 style="font-size:24px;font-weight:800">فهرس المحتوى' + (pagesN > 1 ? ' <span class="num" style="font-size:14px;color:#8A85A3">(' + (p + 1) + '/' + pagesN + ')</span>' : '') + '</h2></div>' +
-      '<div style="position:absolute;top:104px;right:34px;left:34px;display:flex;flex-direction:column;gap:12px">' + list.map(a => { const col = Content.color(a); return '<div style="display:flex;gap:12px;align-items:flex-start;background:' + tint(col, .08) + ';border-radius:18px;padding:12px 14px;border-right:6px solid ' + col + '"><div style="width:48px;height:48px;border-radius:14px;background:' + col + ';display:flex;align-items:center;justify-content:center;flex:none">' + iconSvg(a.icon || 'star', 26, '#fff') + '</div><div style="flex:1"><div style="font-family:Alexandria;font-weight:800;font-size:15.5px">' + h(a.title) + '</div>' + (a.classic ? '<div style="font-family:IBM Plex Sans Arabic;font-size:11.5px;color:#8A85A3">' + h(a.classic) + '</div>' : '') + '<div class="j" style="font-size:11.5px;color:#4A4566;margin-top:3px;max-height:54px;overflow:hidden">' + h(stripHtml(a.desc)) + '</div></div></div>'; }).join('') + '</div>');
+      '<div style="position:absolute;top:104px;right:34px;left:34px;display:flex;flex-direction:column;gap:12px">' + list.map(a => { const col = Content.color(a); return '<div style="display:flex;gap:12px;align-items:flex-start;background:' + tint(col, .08) + ';border-radius:18px;padding:12px 14px;border-right:6px solid ' + col + '"><div style="width:48px;height:48px;border-radius:14px;background:' + col + ';display:flex;align-items:center;justify-content:center;flex:none">' + iconSvg(a.icon || 'star', 26, '#fff') + '</div><div style="flex:1"><div style="font-family:Cairo;font-weight:800;font-size:15.5px">' + h(a.title) + '</div>' + (a.classic ? '<div style="font-family:IBM Plex Sans Arabic;font-size:11.5px;color:#8A85A3">' + h(a.classic) + '</div>' : '') + '<div class="j" style="font-size:11.5px;color:#4A4566;margin-top:3px;max-height:54px;overflow:hidden">' + h(stripHtml(a.desc)) + '</div></div></div>'; }).join('') + '</div>');
   }
   return out;
 }
@@ -2339,7 +2339,7 @@ function axisCover(a, sub) {
 function pageHeader(a, label) {
   const col = Content.color(a);
   return '<div style="position:absolute;top:0;left:0;right:0;height:92px;background:linear-gradient(120deg,' + col + ',' + shade(col, -.4) + ');overflow:hidden">' + PP.decor(a.id + 'hd', .14) +
-    '<div style="position:absolute;top:22px;right:26px;left:26px;display:flex;gap:12px;align-items:center;color:#fff"><div style="width:46px;height:46px;border-radius:14px;background:rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;flex:none">' + iconSvg(a.icon || 'star', 26, '#fff') + '</div><div style="flex:1;min-width:0"><div style="font-family:Alexandria;font-weight:800;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + h(a.title) + '</div><div style="font-family:IBM Plex Sans Arabic;font-size:11px;opacity:.9">' + label + '</div></div></div></div>';
+    '<div style="position:absolute;top:22px;right:26px;left:26px;display:flex;gap:12px;align-items:center;color:#fff"><div style="width:46px;height:46px;border-radius:14px;background:rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;flex:none">' + iconSvg(a.icon || 'star', 26, '#fff') + '</div><div style="flex:1;min-width:0"><div style="font-family:Cairo;font-weight:800;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + h(a.title) + '</div><div style="font-family:IBM Plex Sans Arabic;font-size:11px;opacity:.9">' + label + '</div></div></div></div>';
 }
 function slidePage(a, s, i, n, pageNo) {
   const col = Content.color(a); const t = SLIDE_TYPES[s.type] ? s.type : 'principle';
@@ -2377,7 +2377,7 @@ async function buildCongratsPdf(name) {
       axes.slice(0, 8).map((a, i) => { const pos = [[60, 60], [1010, 60], [60, 660], [1010, 660], [300, 40], [770, 690], [40, 360], [1030, 360]][i]; const col = Content.color(a); return '<div style="position:absolute;left:' + pos[0] + 'px;top:' + pos[1] + 'px;width:56px;height:56px;border-radius:18px;background:' + tint(col, .15) + ';display:flex;align-items:center;justify-content:center">' + iconSvg(a.icon, 30, col) + '</div>'; }).join('') +
       '<div style="position:absolute;left:150px;right:150px;top:100px;bottom:100px;background:#fff;border-radius:30px;box-shadow:0 24px 60px rgba(40,25,110,.16);padding:40px 60px;text-align:center">' +
       '<div style="font-size:60px;line-height:1.1">' + h(c.emoji) + '</div><h1 style="font-size:34px;font-weight:800;margin-top:6px">' + h(rep(c.title)) + '</h1>' +
-      '<div style="font-family:Alexandria;font-size:42px;font-weight:800;color:#5B3DF5;margin:14px 0 6px">' + h(name) + '</div>' +
+      '<div style="font-family:Cairo;font-size:42px;font-weight:800;color:#5B3DF5;margin:14px 0 6px">' + h(name) + '</div>' +
       c.paragraphs.map(p => '<p style="font-size:18px;color:#4A4566;margin-top:8px;line-height:1.8">' + h(rep(p)) + '</p>').join('') +
       '<div style="position:absolute;bottom:28px;left:60px;right:60px;display:flex;justify-content:space-between;font-family:IBM Plex Sans Arabic;font-size:15px;color:#4A4566"><span>' + h(rep(c.footerRight)) + '</span><span>' + h(rep(c.footerLeft)) + '</span></div></div>';
     const doc = await PDFE.build([page], A4L, (i, n) => pm.set(i, n));
@@ -2420,7 +2420,7 @@ function personPages(uid) {
         (e.scenario ? '<div class="j" style="margin-top:10px;padding:10px 12px;border-radius:12px;background:#FFFBF4;border:1px solid #F4E3EA;font-size:.95em"><b>الموقف: </b>' + stripHtml(e.scenario) + '</div>' : '') +
         (e.task && e.format === 'text' ? '<div class="j" style="margin-top:8px;font-size:.95em"><b>المطلوب: </b>' + h(stripHtml(e.task)) + '</div>' : '') +
         (r.group ? '<div style="margin-top:10px;display:inline-block;padding:2px 10px;border-radius:999px;background:' + tint(col, .14) + ';font-family:IBM Plex Sans Arabic;font-size:11.5px;font-weight:700">(ضمن ' + h(Groups.label(r.group)) + ')</div>' : '') +
-        '<div style="margin-top:10px;font-family:Alexandria;font-weight:700;color:' + col + '">إجابة المتدرب</div>' + answerPdfHtml(e, r.p);
+        '<div style="margin-top:10px;font-family:Cairo;font-weight:700;color:' + col + '">إجابة المتدرب</div>' + answerPdfHtml(e, r.p);
       pages.push(pageHeader(sec.a, h(u.name || '') + ' · سجل مشاركات') + '<div class="fit" style="top:110px;bottom:44px;right:30px;left:30px;line-height:1.8">' + body + '</div>' + PP.foot(Content.courseTitle(), pages.length + 1));
     });
   });
@@ -2481,10 +2481,10 @@ async function saveMemberCard(me) {
     c.fillStyle = '#fff'; const rr = (x, y, w, hh, r) => { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + hh, r); c.arcTo(x + w, y + hh, x, y + hh, r); c.arcTo(x, y + hh, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); };
     rr(60, 70, W - 120, H - 140, 36); c.fill();
     c.direction = 'rtl'; c.textAlign = 'right'; c.fillStyle = '#5B3DF5'; c.font = '700 26px "IBM Plex Sans Arabic", sans-serif'; c.fillText(Content.courseTitle(), W - 110, 140);
-    c.fillStyle = '#15122B'; c.font = '800 54px Alexandria, sans-serif'; c.fillText(me.name, W - 110, 250);
+    c.fillStyle = '#15122B'; c.font = '800 54px Cairo, sans-serif'; c.fillText(me.name, W - 110, 250);
     c.fillStyle = '#4A4566'; c.font = '500 28px "IBM Plex Sans Arabic", sans-serif'; c.fillText(me.role || '', W - 110, 305);
     c.fillStyle = '#8A85A3'; c.font = '700 22px "IBM Plex Sans Arabic", sans-serif'; c.fillText('رقم العضوية', W - 110, 400);
-    c.direction = 'ltr'; c.textAlign = 'right'; c.fillStyle = '#15122B'; c.font = '800 76px Alexandria, sans-serif'; c.fillText(pad4(me.member || 0), W - 110, 480);
+    c.direction = 'ltr'; c.textAlign = 'right'; c.fillStyle = '#15122B'; c.font = '800 76px Cairo, sans-serif'; c.fillText(pad4(me.member || 0), W - 110, 480);
     c.textAlign = 'left'; c.direction = 'rtl'; c.fillStyle = '#8A85A3'; c.font = '500 20px "IBM Plex Sans Arabic", sans-serif'; c.fillText('ادخل به من أي جهاز: «مسجّل مسبقًا؟ الدخول برقم العضوية»', 110, 480);
     await new Promise(res => cv.toBlob(b => { downloadBlob(b, 'رقم العضوية ' + pad4(me.member || 0) + '.png'); res(); }, 'image/png'));
     UI.toast('✅ تم حفظ بطاقة رقم العضوية على جهازك');
