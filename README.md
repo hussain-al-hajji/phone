@@ -1,6 +1,6 @@
 # التحول التجاري عبر الهاتف المحمول — منصة تدريبية تفاعلية
 
-الملف النهائي: **`index.html`** — ملف HTML واحد قائم بذاته (Vanilla JS) مربوط بـ Firebase Realtime Database:
+الملف النهائي: **`index.html`** (منشور على https://hussain-al-hajji.github.io/phone) — ملف HTML واحد قائم بذاته (Vanilla JS) مربوط بـ Firebase Realtime Database:
 `https://mobile-d6aea-default-rtdb.firebaseio.com/`
 
 المنصة التعليمية مباشرة (بلا صفحة تعريفية): من يفتح الرابط دون تسجيل يرى صفحة دخول بسيطة (تسجيل جديد، أو الدخول برقم العضوية ورمزه، أو التصفح كزائر).
