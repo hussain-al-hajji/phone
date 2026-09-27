@@ -11,11 +11,10 @@ const firebaseConfig = {
   databaseURL: "https://mobile-d6aea-default-rtdb.firebaseio.com/",
   // لتفعيل دخول المدرب وحماية البيانات (Firebase Authentication): الصق هنا قيم تطبيق الويب من
   // Project settings ← Your apps ← Web app ← SDK setup and configuration ← Config
-  // ما دامت apiKey فارغة يعمل الموقع بالوضع القديم (رمز سري للإدارة وقواعد مفتوحة) — انظر README
-  apiKey: "",
-  authDomain: "",
-  projectId: "",
-  appId: "",
+  apiKey: "AIzaSyBx79vmjpzB9MIjcwSa-IEr5us66zc4d8w",
+  authDomain: "mobile-d6aea.firebaseapp.com",
+  projectId: "mobile-d6aea",
+  appId: "1:801118595644:web:3782407510337583c37139",
   // Firebase App Check (reCAPTCHA v3): الصق «Site key» بعد تسجيل الموقع في App Check — فارغ = غير مفعّل
   appCheckSiteKey: ""
 };
