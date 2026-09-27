@@ -183,7 +183,7 @@ if (require.main === module) {
   console.log(charts);
   // تحقق من سلامة التمارين التفاعلية
   d.axes.forEach(a => a.exercises.forEach(e => {
-    if (e.format !== 'text' && !(e.items && e.items.length)) console.log('NO ITEMS', e.id);
+    if (e.format !== 'text' && e.format !== 'sim' && !(e.items && e.items.length)) console.log('NO ITEMS', e.id);
     if (e.format === 'fillblank' && e.mode !== 'group') console.log('MODE', e.id);
     if (e.format === 'comparePairs' && e.mode !== 'group') console.log('MODE', e.id);
     if ((e.format === 'mcq' || e.format === 'truefalse') && e.mode !== 'individual') console.log('MODE', e.id);
