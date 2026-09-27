@@ -61,7 +61,7 @@ const EN = {
 const EN_OPTIONS = {
   'تجزئة ومنتجات استهلاكية': 'Retail & consumer goods', 'أغذية ومشروبات': 'Food & beverage', 'أزياء وعطور ومستحضرات': 'Fashion, fragrance & cosmetics', 'خدمات وحجوزات': 'Services & bookings', 'تقنية ومنتجات رقمية': 'Tech & digital products', 'صناعة وتوريد (B2B)': 'Manufacturing & supply (B2B)', 'أخرى': 'Other',
   'فكرة لم تنطلق بعد': 'Idea stage', 'مشروع قائم دون بيع إلكتروني': 'Operating, no online sales', 'بدأت البيع إلكترونيًا منذ أقل من سنة': 'Selling online < 1 year', 'متجر إلكتروني قائم يسعى للتوسع': 'Established store seeking scale',
-  'متجر إلكتروني خاص': 'Own online store', 'سوق إلكتروني (مثل Noon أو سنونو)': 'Marketplace (e.g. Noon, Snoonu)', 'وسائل التواصل وواتساب فقط': 'Social media & WhatsApp only', 'أكثر من قناة': 'Multiple channels', 'لا يوجد بعد': 'None yet',
+  'متجر إلكتروني خاص': 'Own online store', 'سوق إلكتروني (مثل Noon أو Amazon)': 'Marketplace (e.g. Noon, Amazon)', 'وسائل التواصل وواتساب فقط': 'Social media & WhatsApp only', 'أكثر من قناة': 'Multiple channels', 'لا يوجد بعد': 'None yet',
   'لا توجد مبيعات إلكترونية': 'No online sales', 'أقل من 10%': '< 10%', '10% – 30%': '10% – 30%', '30% – 60%': '30% – 60%', 'أكثر من 60%': '> 60%'
 };
 function enOpt(v) { return EN_OPTIONS[v] || v; }

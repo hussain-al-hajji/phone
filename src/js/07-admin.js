@@ -596,12 +596,12 @@ Views.assessEdit = {
 Views.storyEdit = {
   html() {
     const id = Router.cur.id; const isNew = id === 'new';
-    const st = isNew ? { title: '', country: 'قطر', flag: '🇶🇦', sector: '', year: '', axis: '', scene: 'idea', color: 0, summary: '', story: '', numbers: [], lessons: [], sources: [] } : Content.story(id);
+    const st = isNew ? { title: '', country: 'السعودية', flag: '🇸🇦', sector: '', year: '', axis: '', scene: 'idea', color: 0, summary: '', story: '', numbers: [], lessons: [], sources: [] } : Content.story(id);
     if (!st) return adminHeader('تعديل قصة') + '<div class="empty">القصة غير موجودة.</div>';
     const f = (k, l, ph = '') => '<div class="field"><label>' + l + '</label><input data-stf="' + k + '" data-keep="stf-' + k + '" value="' + h(st[k] || '') + '" placeholder="' + h(ph) + '"></div>';
     const scenes = Scenes.keys.filter(k => k !== 'hero');
     return adminHeader(isNew ? '➕ قصة نجاح جديدة' : '✏️ تعديل قصة نجاح') + Layout.crumbs() + '<div class="form-page"><div class="card pad">' +
-      f('title', 'العنوان') + '<div class="grid2">' + f('country', 'الدولة') + f('flag', 'العلم (إيموجي)', '🇶🇦') + f('sector', 'القطاع') + f('year', 'سنة التأسيس') + '</div>' +
+      f('title', 'العنوان') + '<div class="grid2">' + f('country', 'الدولة') + f('flag', 'العلم (إيموجي)', '🇸🇦') + f('sector', 'القطاع') + f('year', 'سنة التأسيس') + '</div>' +
       '<div class="grid2"><div class="field"><label>المحور المرتبط</label><select data-stf="axis"><option value="">— بدون —</option>' + Content.axes({ all: true }).map(a => '<option value="' + h(a.id) + '" ' + (a.id === st.axis ? 'selected' : '') + '>' + h(a.title) + '</option>').join('') + '</select></div>' +
       '<div class="field"><label>الرسم التعبيري</label><select data-stf="scene" id="stScene">' + scenes.map(k => '<option value="' + k + '" ' + (k === st.scene ? 'selected' : '') + '>' + k + '</option>').join('') + '</select></div>' +
       '<div class="field"><label>اللون</label><select data-stf="color" id="stColor">' + AXIS_COLORS.map((c, i) => '<option value="' + i + '" ' + (i === +st.color ? 'selected' : '') + ' style="background:' + c + ';color:#fff">لون ' + (i + 1) + '</option>').join('') + '</select></div></div>' +
