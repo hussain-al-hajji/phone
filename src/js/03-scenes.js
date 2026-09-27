@@ -95,10 +95,65 @@ const Scenes = (function () {
     '<g transform="translate(320 90) rotate(35)"><rect x="-6" y="0" width="12" height="90" rx="6" fill="#D9A57F"/><rect x="-18" y="-24" width="36" height="30" rx="6" fill="' + INK + '"/></g>';
   S.idea = c => bg(c) + ground() + '<g transform="translate(200 100)"><circle r="54" fill="#FFE8A3"/><circle r="40" fill="#FAB20B"/><rect x="-18" y="46" width="36" height="22" rx="6" fill="' + INK + '"/><path d="M-12 4 L0 -14 L12 4 M0 -14 V26" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>' +
     [0, 1, 2, 3, 4, 5].map(i => '<path d="M0 -76 V-66" transform="rotate(' + (i * 60 - 150) + ')" stroke="#FAB20B" stroke-width="5" stroke-linecap="round"/>').join('') + '</g>' + person(80, 120, c) + person(320, 120, c, { flip: true, shirt: dk(c, .25) });
+  // واجهة متجر: مبنى متجر + شاشة متجر إلكتروني + صناديق شحن
+  S.store = c => bg(c) + ground() +
+    '<g transform="translate(40 70)"><rect x="0" y="40" width="170" height="120" rx="10" fill="#fff" stroke="' + lt(c, .4) + '" stroke-width="2"/>' +
+    '<path d="M-6 44 L10 6 H160 L176 44Z" fill="' + c + '"/>' + [0, 1, 2, 3, 4].map(i => '<path d="M' + (-6 + i * 36.4) + ' 44 q18 18 36.4 0" fill="' + (i % 2 ? dk(c, .15) : lt(c, .7)) + '"/>').join('') +
+    '<rect x="16" y="78" width="60" height="50" rx="6" fill="' + lt(c, .18) + '"/><rect x="96" y="78" width="56" height="82" rx="6" fill="' + lt(c, .35) + '"/><circle cx="142" cy="120" r="3" fill="' + INK + '"/></g>' +
+    phone(250, 44, .95, header(c) + cardsList(c) + btn(c), c) +
+    '<g transform="translate(330 176)"><rect width="46" height="40" rx="5" fill="#D9A57F"/><path d="M0 12 H46 M23 0 V40" stroke="' + dk('#D9A57F', .2) + '" stroke-width="3"/></g>' +
+    '<g transform="translate(206 110)"><path d="M0 0 H34" stroke="' + lt(c, .6) + '" stroke-width="4" stroke-dasharray="4 6" stroke-linecap="round"/><path d="M34 0 l-8 -6 v12z" fill="' + lt(c, .6) + '"/></g>';
+  // الشحن عبر الحدود: كرة أرضية + مسارات + طائرة + طرد
+  S.globe = c => bg(c, 1) + ground() +
+    '<g transform="translate(150 118)"><circle r="82" fill="' + lt(c, .12) + '" stroke="' + c + '" stroke-width="4"/>' +
+    '<ellipse rx="36" ry="82" fill="none" stroke="' + lt(c, .55) + '" stroke-width="2.5"/><path d="M-82 0 H82 M-72 -38 H72 M-72 38 H72" stroke="' + lt(c, .55) + '" stroke-width="2.5"/>' +
+    '<path d="M-40 -46 q14 -10 28 0 q6 14 -10 18 q-18 6 -18 -18z M10 10 q22 -8 34 6 q-4 22 -24 20 q-14 -4 -10 -26z" fill="' + lt(c, .45) + '"/></g>' +
+    '<path d="M150 118 C 210 30, 300 30, 350 80" stroke="' + INK + '" stroke-width="3" stroke-dasharray="6 7" fill="none"/>' + pin(150, 122, '#FAB20B') + pin(350, 84, c) +
+    '<g transform="translate(262 42) rotate(20)"><path d="M0 8 L34 4 L44 -6 L50 -4 L44 8 L60 12 L44 16 L50 28 L44 30 L34 20 L0 16Z" fill="' + INK + '"/></g>' +
+    '<g transform="translate(300 160)"><rect width="56" height="48" rx="6" fill="#D9A57F"/><path d="M0 14 H56 M28 0 V48" stroke="' + dk('#D9A57F', .2) + '" stroke-width="3"/><rect x="8" y="24" width="18" height="12" rx="2" fill="#fff"/></g>' +
+    person(60, 130, c, { arm: 'up' }).replace('translate(60 130)', 'translate(60 130) scale(.8)');
+  // ===== مشاهد قصص النجاح =====
+  // دراجة توصيل على طريق إلى منازل بعيدة
+  S.scooter = c => bg(c) + ground() +
+    '<path d="M10 214 C 120 200, 250 226, 390 206" stroke="' + INK + '" stroke-width="14" fill="none" stroke-linecap="round"/><path d="M20 213 C 120 200, 250 225, 380 207" stroke="#fff" stroke-width="2" stroke-dasharray="12 10" fill="none"/>' +
+    [[300, 120, .9], [350, 140, .7]].map(([x, y, k]) => '<g transform="translate(' + x + ' ' + y + ') scale(' + k + ')"><rect x="0" y="20" width="56" height="44" fill="#fff" stroke="' + lt(c, .5) + '" stroke-width="2"/><path d="M-6 22 L28 -4 L62 22Z" fill="' + c + '"/><rect x="20" y="40" width="16" height="24" fill="' + lt(c, .4) + '"/></g>').join('') +
+    pin(352, 112, '#FAB20B') +
+    '<g transform="translate(70 128)"><circle cx="18" cy="72" r="16" fill="' + INK + '"/><circle cx="18" cy="72" r="7" fill="#fff"/><circle cx="120" cy="72" r="16" fill="' + INK + '"/><circle cx="120" cy="72" r="7" fill="#fff"/>' +
+    '<path d="M18 72 L50 48 H110 L120 72" stroke="' + INK + '" stroke-width="7" fill="none" stroke-linejoin="round"/><rect x="0" y="12" width="52" height="42" rx="8" fill="' + c + '"/><rect x="8" y="22" width="36" height="6" rx="3" fill="#fff" opacity=".8"/>' +
+    '<path d="M104 48 L112 14 H126" stroke="' + INK + '" stroke-width="6" fill="none" stroke-linecap="round"/>' +
+    '<circle cx="84" cy="-4" r="15" fill="' + SK + '"/><path d="M68 -8 C68 -26 100 -26 100 -8 Z" fill="' + dk(c, .1) + '"/><rect x="70" y="10" width="30" height="36" rx="12" fill="' + dk(c, .15) + '"/><path d="M96 20 L118 16" stroke="' + dk(c, .15) + '" stroke-width="9" stroke-linecap="round"/></g>' +
+    '<g stroke="' + lt(c, .6) + '" stroke-width="4" stroke-linecap="round"><path d="M40 150 h-26"/><path d="M46 164 h-34"/><path d="M40 178 h-20"/></g>';
+  // طائر السنونو يحمل أكياس التسوق فوق مدينة
+  S.swallow = c => bg(c, 1) + ground() +
+    [[30, 140, 40, 90], [80, 110, 44, 120], [134, 150, 36, 80], [300, 120, 46, 110], [352, 150, 34, 80]].map(([x, y, w, hh]) => '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + hh + '" rx="4" fill="' + lt(c, .18) + '"/>').join('') +
+    '<g transform="translate(200 92)"><path d="M-70 -10 C -40 -40, -10 -30, 0 0 C 10 -30, 40 -40, 70 -10 C 40 -20, 18 -6, 8 12 L 0 40 L -8 12 C -18 -6, -40 -20, -70 -10Z" fill="' + INK + '"/>' +
+    '<path d="M-8 12 L 0 40 L 8 12 C 4 20 -4 20 -8 12Z" fill="' + c + '"/><circle cx="0" cy="4" r="9" fill="' + INK + '"/><path d="M-5 10 C -2 16 2 16 5 10" fill="' + c + '"/><circle cx="3" cy="2" r="1.8" fill="#fff"/>' +
+    '<path d="M-6 36 L -22 64 M 6 36 L 22 64" stroke="' + INK + '" stroke-width="2"/>' +
+    '<g transform="translate(-40 62)"><rect width="34" height="32" rx="4" fill="' + c + '"/><path d="M8 0 C8 -12 26 -12 26 0" stroke="' + INK + '" stroke-width="3" fill="none"/></g>' +
+    '<g transform="translate(8 62)"><rect width="34" height="32" rx="4" fill="#FAB20B"/><path d="M8 0 C8 -12 26 -12 26 0" stroke="' + INK + '" stroke-width="3" fill="none"/></g></g>' +
+    '<g stroke="' + lt(c, .5) + '" stroke-width="3" stroke-linecap="round" fill="none"><path d="M100 70 q-30 6 -60 -4"/><path d="M110 90 q-40 10 -80 0"/></g>' +
+    '<g transform="translate(330 40)">' + check(0, 0, 16, '#00A653') + '</g>';
+  // من رسائل التواصل إلى متجر منظم
+  S.social2store = c => bg(c) + ground() +
+    phone(40, 44, .9, '<rect x="0" y="0" width="80" height="150" fill="' + lt(c, .06) + '"/>' + [0, 1, 2, 3].map(i => '<rect x="' + (i % 2 ? 26 : 6) + '" y="' + (10 + i * 34) + '" width="48" height="24" rx="10" fill="' + (i % 2 ? c : '#fff') + '" stroke="' + lt(c, .4) + '"/>').join(''), c) +
+    '<g transform="translate(140 118)"><path d="M0 0 H70" stroke="' + INK + '" stroke-width="5" stroke-linecap="round"/><path d="M70 0 l-14 -10 v20z" fill="' + INK + '"/></g>' +
+    '<g transform="translate(228 44)"><rect width="150" height="170" rx="14" fill="#fff" stroke="' + lt(c, .4) + '" stroke-width="2"/><rect width="150" height="26" rx="12" fill="' + c + '"/>' +
+    [0, 1, 2, 3].map(i => '<g transform="translate(' + (12 + (i % 2) * 68) + ' ' + (38 + Math.floor(i / 2) * 64) + ')"><rect width="58" height="54" rx="8" fill="' + lt(c, .1) + '"/><rect x="8" y="6" width="42" height="26" rx="6" fill="' + lt(c, .4) + '"/><rect x="8" y="38" width="30" height="6" rx="3" fill="' + INK + '"/></g>').join('') + '</g>' +
+    '<g transform="translate(360 40)">' + check(0, 0, 14, '#00A653') + '</g>';
+  // بطاقة وجهاز دفع ودرع حماية
+  S.payments = c => bg(c, 1) + ground() +
+    '<g transform="translate(60 70) rotate(-8)"><rect width="170" height="106" rx="14" fill="' + c + '"/><rect y="22" width="170" height="18" fill="' + dk(c, .3) + '"/><rect x="16" y="56" width="30" height="22" rx="4" fill="#FAB20B"/><rect x="16" y="86" width="90" height="8" rx="4" fill="#fff" opacity=".7"/></g>' +
+    '<g transform="translate(240 70)"><rect width="84" height="140" rx="14" fill="' + INK + '"/><rect x="10" y="12" width="64" height="44" rx="6" fill="' + lt(c, .6) + '"/>' + [0, 1, 2].map(r => [0, 1, 2].map(k => '<rect x="' + (12 + k * 22) + '" y="' + (68 + r * 22) + '" width="16" height="14" rx="4" fill="#3A4460"/>').join('')).join('') + '</g>' +
+    shieldS(320, 40, .9, '#00A653') +
+    '<g fill="none" stroke="' + lt(c, .6) + '" stroke-width="4" stroke-linecap="round"><path d="M236 40 q14 -14 28 0"/><path d="M228 30 q22 -24 44 0"/></g>';
+  // مجتمع حول متجر متخصص: أشخاص وقلوب حول هاتف
+  S.community = c => bg(c) + ground() + phone(158, 36, 1, header(c) + '<circle cx="40" cy="56" r="20" fill="' + lt(c, .35) + '"/><path d="M30 56 q10 12 20 0" stroke="' + c + '" stroke-width="3" fill="none"/>' + cardsList(c).replace(/translate\(0 /, 'translate(0 ') , c) +
+    person(80, 118, c, { arm: 'up' }) + person(330, 118, dk(c, .1), { flip: true, arm: 'up', shirt: '#FAB20B' }) +
+    [[120, 50], [285, 40], [60, 60], [350, 70], [230, 24]].map(([x, y], i) => '<path transform="translate(' + x + ' ' + y + ') scale(' + (i % 2 ? .8 : 1.1) + ')" d="M0 6 C0 -2 10 -4 12 4 C14 -4 24 -2 24 6 C24 14 12 20 12 22 C12 20 0 14 0 6Z" fill="' + (i % 2 ? '#FAB20B' : c) + '"/>').join('');
   // غلاف الدورة: رحلة من الاهتمام إلى الإتمام داخل الهاتف
   S.hero = () => {
     const c = '#0093A8', p = '#F58220', a = '#FAB20B';
-    return '<rect width="1200" height="380" fill="url(#hg)"/><defs><linearGradient id="hg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#E2F3F5"/><stop offset=".55" stop-color="#FFF0E0"/><stop offset="1" stop-color="#FFF6DB"/></linearGradient></defs>' +
+    return '<rect width="1200" height="380" fill="url(#hg)"/><defs><linearGradient id="hg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#E3F1F4"/><stop offset=".55" stop-color="#FFF0E0"/><stop offset="1" stop-color="#FFF6DB"/></linearGradient></defs>' +
       '<circle cx="1080" cy="60" r="120" fill="' + lt(c, .08) + '"/><circle cx="120" cy="330" r="150" fill="' + lt(p, .08) + '"/><circle cx="640" cy="-40" r="110" fill="' + lt(a, .12) + '"/>' +
       '<path d="M80 300 C 260 160, 380 330, 560 220 S 860 90, 1120 140" stroke="' + lt(c, .25) + '" stroke-width="26" fill="none" stroke-linecap="round"/><path d="M80 300 C 260 160, 380 330, 560 220 S 860 90, 1120 140" stroke="#fff" stroke-width="4" stroke-dasharray="12 14" fill="none"/>' +
       '<g transform="translate(150 230)"><circle r="30" fill="#fff"/>' + '<path d="M-14 0 a14 14 0 1 0 28 0 a14 14 0 1 0 -28 0" fill="' + lt(c, .3) + '"/><circle r="6" fill="' + c + '"/></g>' +

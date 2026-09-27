@@ -2,9 +2,11 @@
 // الموجّه (History API) + الهيكل العام + مكوّنات مشتركة
 // ---------------------------------------------------------------------
 const UIState = { deck: {}, openAcc: new Set(), openDrop: new Set(), draft: {}, fbSel: {}, editing: {}, modelShown: {}, bellOpen: false };
+// دخول المدرب: بحساب Firebase Authentication عند تفعيله (والتحقق من عقدة admins/<uid>)، وإلا بالرمز السري في المعاينة
+const AUTH = { enabled: false, resolved: true, user: null, isAdmin: false };
 const Admin = {
-  ok() { return SafeSS.get('mc_admin') === '1'; },
-  preview() { return SafeSS.get('mc_preview') === '1'; },
+  ok() { return AUTH.enabled ? AUTH.isAdmin : SafeSS.get('ec_admin') === '1'; },
+  preview() { return SafeSS.get('ec_preview') === '1'; },
   ctl() { return Admin.ok() && !Admin.preview(); }
 };
 
@@ -14,7 +16,7 @@ const Router = {
     const st = SafeHist.state(); if (st && st.view) return st;
     const hp = getHashParams(); const o = { view: hp.v || 'home' }; if (hp.id) o.id = hp.id; if (hp.from) o.from = hp.from; if (hp.axis) o.axis = hp.axis; return o;
   },
-  url(st) { const p = { u: Me.uid() || '', v: st.view !== 'home' ? st.view : '', id: st.id || '', from: st.from || '', axis: st.axis || '' }; return location.pathname + location.search + buildHash(p); },
+  url(st) { const p = { v: st.view !== 'home' ? st.view : '', id: st.id || '', from: st.from || '', axis: st.axis || '' }; return location.pathname + location.search + buildHash(p); },
   go(view, params = {}, o = {}) {
     const st = Object.assign({ view }, params);
     Router.cur = st;
@@ -27,7 +29,9 @@ const Router = {
   backOf(st) {
     switch (st.view) {
       case 'ex': { const ax = Content.axisOfEx(st.id); return ax ? { view: 'axis', id: ax } : { view: 'home' }; }
-      case 'axis': case 'lab': case 'account': case 'admin': return { view: 'home' };
+      case 'axis': case 'lab': case 'account': case 'admin': case 'assess': case 'story': case 'tools': case 'followup': return { view: 'home' };
+      case 'storyEdit': return { view: 'admin' };
+      case 'secEdit': case 'labEdit': case 'assessEdit': return { view: 'admin' };
       case 'exEdit': return st.from === 'axisEdit' && st.axis ? { view: 'axisEdit', id: st.axis } : { view: 'admin' };
       case 'axisEdit': case 'actEdit': return { view: 'admin' };
       default: return null;
@@ -41,18 +45,29 @@ const Layout = {
   topbar() {
     const s = Content.site(); const me = Me.data;
     return '<header class="topbar"><div class="wrap">' +
-      '<div class="brand" data-go="home"><div class="brand-logo">' + iconSvg('cart', 22, '#fff', 2.2) + '</div><div class="brand-text"><div class="brand-title" id="brandTitle">' + h(s.headerTitle) + '</div><div class="brand-sub">' + h(s.headerSub) + '</div></div></div>' +
+      // الشعار يقود دائمًا إلى الصفحة التعريفية؛ العنوان الكامل يظهر فيها فقط، وفي بقية الصفحات كلمة «الواجهة»
+      '<div class="brand' + (!HAS_LANDING || App.onLanding ? '' : ' brand-min') + '" data-go="' + (HAS_LANDING ? 'landing' : 'home') + '" title="' + (HAS_LANDING ? 'الصفحة التعريفية بالبرنامج' : 'الرئيسية') + '" role="link" tabindex="0"><div class="brand-logo">' + iconSvg('store', 22, '#fff', 2.2) + '</div><div class="brand-text">' + (!HAS_LANDING || App.onLanding ? '<div class="brand-title" id="brandTitle">' + h(s.headerTitle) + '</div><div class="brand-sub">' + h(s.headerSub) + '</div>' : '<div class="brand-title brand-short">الواجهة</div>') + '</div></div>' +
       '<div class="top-actions">' +
-      (me ? '<div class="user-chip" title="' + h(me.name) + '"><span class="av">' + h(initials(me.name)) + '</span><span class="nm">' + h(me.name) + '</span></div><button class="btn btn-soft btn-sm" data-go="account">' + iconSvg('user', 16) + '<span class="lbl">حسابي</span></button>' : (Me.guest ? '<span class="pill">👀 زائر</span>' : '')) +
-      '<button class="btn btn-ghost btn-sm" data-act="switch-user" title="تبديل المستخدم / تسجيل مستخدم جديد">' + iconSvg('users', 16) + '<span class="lbl">تبديل المستخدم</span></button>' +
+      (me ? '<button class="user-chip" data-go="account" title="حسابي — ' + h(me.name) + '"><span class="av">' + iconSvg('user', 16, '#fff') + '</span><span class="uc-txt"><span class="nm">' + h(String(me.name || '').trim().split(/\s+/)[0]) + '</span><span class="uc-sub">حسابي</span></span></button>' : (Me.guest ? '<span class="pill">👀 زائر</span>' : '')) +
+      (!me && !Me.guest ? (!App.onLanding ? '' : '<button class="btn btn-primary btn-sm top-cta" data-act="open-login"><span class="cta-l">الدخول للمنصة التعليمية</span><span class="cta-s">الدخول</span> <span class="lp-arrow">←</span></button>') :
+        (App.onLanding ? '<button class="btn btn-primary btn-sm top-cta" data-act="lp-enter"><span class="cta-l">الدخول للمنصة التعليمية</span><span class="cta-s">المنصة</span> <span class="lp-arrow">←</span></button>' : '') +
+        '<button class="btn btn-ghost btn-sm" data-act="switch-user" title="تسجيل مستخدم جديد (يعيدك إلى الصفحة التعريفية)">' + iconSvg('users', 16) + '<span class="lbl">مستخدم جديد</span></button>') +
+      '<button class="btn btn-ghost btn-sm notranslate" translate="no" data-act="prefs" title="إعدادات العرض: الوضع الليلي وحجم الخط والتباين" aria-label="إعدادات العرض">Aa</button>' +
+      Translate.button() +
       '<button class="icon-btn" data-act="admin-enter" title="لوحة الإدارة">' + iconSvg('gear', 18) + '</button>' +
       '</div></div></header>';
   },
   banners() {
     let out = '';
+    const st = DB.status; if (st && DB.real && st.ready && (!st.connected || st.pending > 0)) out += '<div class="banner banner-offline">' + (!st.connected ? '📡 <b>انقطع الاتصال بالخادم.</b> ' : '⏳ ') + (st.pending ? '<span class="num">' + st.pending + '</span> تعديل بانتظار الحفظ — لا تغلق الصفحة حتى يعود الاتصال.' : 'ستُحفظ أي تعديلات تلقائيًا عند عودة الاتصال.') + '</div>';
     if (App.inIframe) out += '<div class="banner banner-iframe">الصفحة معروضة داخل إطار مضمَّن؛ لتجربة أفضل افتحها مستقلة. <a class="btn btn-sm btn-primary" href="' + h(location.href) + '" target="_blank" rel="noopener">فتح في تبويب مستقل</a></div>';
+    // تسجيل الحضور: شريط يظهر للمسجلين عندما يفتح المدرب تسجيل حضور يوم ما
+    if (Me.isReg() && ADMIN_VIEWS.indexOf(Router.cur.view) === -1) Attend.openDays().forEach(d => {
+      const done = Attend.hoursOf(Me.uid(), d) > 0;
+      out += '<div class="banner banner-checkin">' + (done ? '✅ تم تسجيل حضورك في <b>اليوم ' + d + '</b>' : '📍 تسجيل الحضور مفتوح — <b>اليوم ' + d + '</b>: <input data-keep="checkin-' + d + '" id="checkin' + d + '" inputmode="numeric" maxlength="6" placeholder="رمز الحضور" class="num"><button class="btn btn-sm btn-primary" data-act="checkin" data-d="' + d + '">تسجيل</button>') + '</div>';
+    });
     const b = Store.broadcast;
-    if (b && b.text && SafeLS.get('mc_bc_closed') !== String(b.id)) out += '<div class="banner banner-broadcast">📣 <span>' + h(b.text) + '</span><button class="x" data-act="bc-close" data-id="' + h(b.id) + '" title="إغلاق">✕</button></div>';
+    if (b && b.text && SafeLS.get('ec_bc_closed') !== String(b.id)) out += '<div class="banner banner-broadcast">📣 <span>' + h(b.text) + '</span><button class="x" data-act="bc-close" data-id="' + h(b.id) + '" title="إغلاق">✕</button></div>';
     return out;
   },
   footer() {
@@ -74,8 +89,61 @@ const Layout = {
   },
   crumbs(extra = '') {
     const b = Router.backOf(Router.cur);
-    return '<div class="crumbs">' + (b ? '<button class="back-btn" data-back>→ رجوع</button>' : '') + '<button class="back-btn" data-go="home">' + iconSvg('home', 15) + ' الرئيسية</button>' + extra + '</div>';
+    return '<div class="crumbs">' + (b ? '<button class="back-btn" data-back>→ رجوع</button>' : '') + '<button class="back-btn" data-go="home">' + iconSvg('home', 15) + ' ' + HOME_LABEL + '</button>' + extra + '</div>';
   }
+};
+
+// ---------- تفضيلات العرض لسهولة الوصول (تُحفظ على جهاز المستخدم فقط) ----------
+const Prefs = {
+  get() { try { return Object.assign({ theme: 'auto', fs: 'md', contrast: 'normal', motion: 'normal' }, JSON.parse(SafeLS.get('ec_prefs') || '{}')); } catch (e) { return { theme: 'auto', fs: 'md', contrast: 'normal', motion: 'normal' }; } },
+  set(k, v) { const p = Prefs.get(); p[k] = v; SafeLS.set('ec_prefs', JSON.stringify(p)); Prefs.apply(); },
+  apply() {
+    const p = Prefs.get(); const r = document.documentElement; let dark = p.theme === 'dark';
+    if (p.theme === 'auto') { try { dark = window.matchMedia('(prefers-color-scheme: dark)').matches; } catch (e) {} }
+    r.setAttribute('data-theme', dark ? 'dark' : 'light'); r.setAttribute('data-fs', p.fs); r.setAttribute('data-contrast', p.contrast);
+    let red = p.motion === 'reduce'; if (p.motion === 'normal') { try { red = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {} } r.setAttribute('data-motion', red ? 'reduce' : 'normal');
+    const m = document.querySelector('meta[name="theme-color"]'); if (m) m.setAttribute('content', dark ? '#11141C' : '#0093A8');
+  },
+  menu() {
+    const seg = (k, opts) => { const v = Prefs.get()[k]; return '<div class="sim-seg">' + opts.map(([val, l]) => '<label class="' + (v === val ? 'on' : '') + '" data-pref="' + k + '" data-v="' + val + '">' + l + '</label>').join('') + '</div>'; };
+    const body = () => '<h3>Aa إعدادات العرض</h3><div class="prefs-grid"><div><b>المظهر</b><br>' + seg('theme', [['light', '☀️ فاتح'], ['dark', '🌙 داكن'], ['auto', '🖥 حسب الجهاز']]) + '</div><div><b>حجم الخط</b><br>' + seg('fs', [['sm', 'صغير'], ['md', 'عادي'], ['lg', 'كبير'], ['xl', 'كبير جدًا']]) + '</div><div><b>التباين</b><br>' + seg('contrast', [['normal', 'عادي'], ['high', 'عالٍ']]) + '</div><div><b>الحركة</b><br>' + seg('motion', [['normal', 'عادية'], ['reduce', 'مخففة']]) + '</div></div><p class="muted" style="font-size:12.5px;margin-top:12px">تُحفظ هذه الإعدادات على هذا الجهاز فقط.</p><div class="actions"><button class="btn btn-primary" data-x>تم</button></div>';
+    const m = UI.modal(body()); const wire = () => { $$('[data-pref]', m.el).forEach(l => l.onclick = () => { Prefs.set(l.getAttribute('data-pref'), l.getAttribute('data-v')); m.el.innerHTML = body(); wire(); }); $('[data-x]', m.el).onclick = () => m.close(); }; wire();
+  }
+};
+Prefs.apply();
+try { window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => Prefs.apply()); } catch (e) {}
+
+// ---------- الترجمة الآلية (Google Translate) — تُحمَّل عند الطلب فقط ----------
+// المحتوى الأصلي عربي بالكامل؛ الزر يترجم الصفحة الحالية وكل ما يُرسم لاحقًا، و«العربية» تعيدها كما كانت.
+const Translate = {
+  LANGS: [['en', 'English'], ['fr', 'Français'], ['ur', 'اردو'], ['hi', 'हिन्दी'], ['tl', 'Filipino'], ['ml', 'മലയാളം'], ['es', 'Español'], ['tr', 'Türkçe']],
+  cur() { const m = (Cookie.get('googtrans') || '').match(/^\/ar\/([a-zA-Z-]+)$/); return m ? m[1] : 'ar'; },
+  button() { const c = Translate.cur(); return '<button class="btn btn-ghost btn-sm notranslate" translate="no" data-act="translate" title="ترجمة آلية للمحتوى عبر Google Translate">🌐<span class="lbl">' + (c === 'ar' ? 'ترجمة' : 'العربية') + '</span></button>'; },
+  load() {
+    if (Translate._loaded) return; Translate._loaded = true;
+    if (!document.getElementById('gt_el')) { const d = document.createElement('div'); d.id = 'gt_el'; d.style.display = 'none'; document.body.appendChild(d); }
+    window.gtInit = () => { try { new google.translate.TranslateElement({ pageLanguage: 'ar', autoDisplay: false }, 'gt_el'); } catch (e) {} };
+    loadScript('https://translate.google.com/translate_a/element.js?cb=gtInit').catch(() => { Translate._loaded = false; UI.alert('تعذر تحميل خدمة الترجمة. تحقق من الاتصال بالإنترنت.'); });
+  },
+  setCookie(v) {
+    const host = location.hostname; const parts = host.split('.');
+    const doms = ['', host]; if (parts.length > 1) doms.push('.' + parts.slice(-2).join('.'));
+    doms.forEach(dm => { try { document.cookie = 'googtrans=' + (v || '') + ';path=/' + (dm ? ';domain=' + dm : '') + (v ? '' : ';max-age=0'); } catch (e) {} });
+  },
+  set(lang) {
+    if (lang === 'ar') { Translate.setCookie(''); location.reload(); return; }
+    Translate.setCookie('/ar/' + lang);
+    const combo = document.querySelector('.goog-te-combo');
+    if (combo) { combo.value = lang; combo.dispatchEvent(new Event('change')); UI.toast('🌐 جارٍ الترجمة…'); App.render(); }
+    else { Translate.load(); UI.toast('🌐 جارٍ تحميل الترجمة…'); let n = 0; const t = setInterval(() => { const cb = document.querySelector('.goog-te-combo'); if (cb || ++n > 40) { clearInterval(t); if (cb) { cb.value = lang; cb.dispatchEvent(new Event('change')); } App.render(); } }, 250); }
+  },
+  menu() {
+    const c = Translate.cur();
+    const m = UI.modal('<h3>🌐 الترجمة الآلية</h3><p class="muted" style="font-family:var(--f-ui);font-size:13.5px">المحتوى الأصلي للمنصة باللغة العربية. اختر لغة لترجمة الصفحة آليًا عبر Google Translate (قد لا تكون الترجمة الآلية دقيقة تمامًا في المصطلحات).</p><div class="lang-grid notranslate" translate="no">' +
+      '<button class="btn ' + (c === 'ar' ? 'btn-primary' : 'btn-soft') + '" data-lang="ar">العربية (الأصل)</button>' + Translate.LANGS.map(([k, n]) => '<button class="btn ' + (c === k ? 'btn-primary' : 'btn-ghost') + '" data-lang="' + k + '">' + n + '</button>').join('') + '</div>');
+    $$('[data-lang]', m.el).forEach(b => b.onclick = () => { m.close(); Translate.set(b.getAttribute('data-lang')); });
+  },
+  boot() { if (Translate.cur() !== 'ar') Translate.load(); }
 };
 
 // ---------- إعادة رسم تحافظ على المدخلات والتركيز ----------
@@ -105,11 +173,12 @@ function withLede(html) { // أول جملة من الفقرة بخط عريض
   return d.innerHTML;
 }
 function richHtml(v) { if (!v) return ''; return /<[a-z][\s\S]*>/i.test(v) ? sanitize(v) : h(v).replace(/\n/g, '<br>'); }
-function sanitize(html) { // تنظيف بسيط لمحتوى المحرر
-  const d = document.createElement('div'); d.innerHTML = html;
-  $$('script,style,iframe,object,embed', d).forEach(x => x.remove());
-  $$('*', d).forEach(el => { [...el.attributes].forEach(a => { if (/^on/i.test(a.name) || (a.name === 'href' && /^\s*javascript:/i.test(a.value))) el.removeAttribute(a.name); }); });
-  return d.innerHTML;
+function sanitize(html) { // تنظيف محتوى المحرر: التحليل داخل <template> (خامل لا يحمّل صورًا ولا ينفّذ شيئًا)
+  const t = document.createElement('template'); t.innerHTML = String(html || '');
+  t.content.querySelectorAll('script,style,iframe,object,embed,frame,frameset,form,input,button,textarea,select,base,link,meta,svg,math,template,noscript').forEach(x => x.remove());
+  t.content.querySelectorAll('*').forEach(el => { [...el.attributes].forEach(a => { const n = a.name.toLowerCase(); const v = String(a.value || '').replace(/[\u0000- ]/g, '').toLowerCase();
+    if (/^on/.test(n) || n === 'srcdoc' || n === 'style' && /expression|url\(/.test(v) || /(^|:)(href|src|action|formaction|xlink:href)$/.test(n) && /^(javascript|vbscript|data):/.test(v)) el.removeAttribute(a.name); }); });
+  return t.innerHTML;
 }
 
 // ---------- الفيديو المضمَّن ----------
@@ -128,28 +197,31 @@ function mediaHtml(s) {
 }
 
 // ---------- عرض شريحة ----------
-function renderSlide(s, a, i, n) {
+function renderSlide(s, a, i, n, cur) {
   const col = Content.color(a); const type = SLIDE_TYPES[s.type] ? s.type : 'principle';
+  const head = '<div class="slide-top"><span class="slide-type"><span class="st-ico">' + (SLIDE_ICONS[type] || '•') + '</span>' + h(SLIDE_TYPES[type]) + '</span><span class="slide-prog"><i style="width:' + ((i + 1) / n * 100).toFixed(1) + '%"></i></span><span class="slide-no num">' + String(i + 1).padStart(2, '0') + '<small>/' + String(n).padStart(2, '0') + '</small></span></div>';
+  const wrap = (inner, cls) => '<div class="slide slide-' + type + (cur ? ' cur' : '') + (cls ? ' ' + cls : '') + '" style="--ac:' + col + ';--acg:' + tint(col, .1) + ';--acd:' + shade(col, -0.35) + '"><span class="slide-wm num" aria-hidden="true">' + String(i + 1).padStart(2, '0') + '</span><div class="slide-in">' + head +
+    (s.image ? '<img class="slide-img" src=\"' + imgSrc(s.image) + '\" alt="">' : '') + '<h2>' + h(s.title) + '</h2>' + inner + '</div></div>';
+  if (SK_TYPES.indexOf(type) > -1) {
+    const chart = s.chart ? '<div class="slide-visual sk-chart">' + Charts.render(s.chart, col) + '</div>' : '';
+    return wrap((chart ? '<div class="sk-split"><div class="sk-main">' + SlideKit[type](s, a, i, col) + '</div>' + chart + '</div>' : SlideKit[type](s, a, i, col)) + mediaHtml(s), chart ? 'vis-chart' : '');
+  }
   let text = '', visual = '';
   const chart = s.chart ? Charts.render(s.chart, col) : '';
-  const rule = s.rule ? '<div class="rule-box"><span class="lbl">' + (type === 'opening' || type === 'summary' ? '📌 قاعدة تذكّرها' : '💡 الرسالة') + '</span>' + richHtml(s.rule) + '</div>' : '';
+  const rule = s.rule ? '<div class="rule-box"><span class="lbl">' + (type === 'opening' || type === 'summary' ? '📌 قاعدة تذكّرها' : '💡 الفكرة الذهبية') + '</span>' + richHtml(s.rule) + '</div>' : '';
   if (type === 'opening' || type === 'summary') {
     text = '<div class="slide-text">' + withLede(richHtml(s.text)) + '</div>' + rule;
-    const sc = Scenes.render(a.scene || 'idea', col, type === 'summary' ? { style: 'max-width:300px;margin:0 auto' } : {});
-    visual = sc + (chart ? '<div style="margin-top:14px">' + chart + '</div>' : '');
+    visual = chart || Scenes.render(a.scene || 'idea', col, type === 'summary' ? { style: 'max-width:300px;margin:0 auto' } : {});
   } else if (type === 'principle') {
-    text = '<div class="slide-text">' + richHtml(s.intro) + '</div>' + (s.points && s.points.length ? '<ul class="points">' + s.points.map((p, k) => '<li><span class="n num">' + (k + 1) + '</span><span>' + boldTerm(p) + '</span></li>').join('') + '</ul>' : '') + rule;
+    text = '<div class="slide-text">' + richHtml(s.intro) + '</div>' + (s.points && s.points.length ? '<ul class="points">' + s.points.map((p, k) => '<li style="--i:' + k + '"><span class="n num">' + (k + 1) + '</span><span>' + boldTerm(p) + '</span></li>').join('') + '</ul>' : '') + rule;
     visual = chart || Scenes.render('idea', col);
   } else {
-    const cls = type === 'mistakes' ? 'mis' : type === 'tools' ? 'tool' : '';
-    text = '<div class="pairs">' + (s.items || []).map(it => { const k = String(it).indexOf('::'); const hd = k > -1 ? it.slice(0, k) : it, bd = k > -1 ? it.slice(k + 2) : ''; return '<div class="pair ' + cls + '"><div class="h">' + h(hd.trim()) + '</div>' + (bd ? '<div class="b">' + h(bd.trim()) + '</div>' : '') + '</div>'; }).join('') + '</div>' + rule;
+    const cls = type === 'mistakes' ? 'mis' : type === 'tools' ? 'tool' : 'ex';
+    text = '<div class="pairs ' + cls + '-list">' + (s.items || []).map((it, k) => { const j = String(it).indexOf('::'); const hd = j > -1 ? it.slice(0, j) : it, bd = j > -1 ? it.slice(j + 2) : ''; return '<div class="pair ' + cls + '" style="--i:' + k + '"><div class="h">' + (cls === 'mis' ? '<span class="pm">✕</span>' : cls === 'tool' ? '<span class="pm">🛠</span>' : '<span class="pm num">' + (k + 1) + '</span>') + '<span>' + h(hd.trim()) + '</span></div>' + (bd ? '<div class="b">' + (cls === 'mis' ? '<span class="pm ok">✓</span>' : '') + '<span>' + h(bd.trim()) + '</span></div>' : '') + '</div>'; }).join('') + '</div>' + rule;
     visual = chart || Scenes.render(type === 'mistakes' ? 'mistakes' : type === 'tools' ? 'tools' : (a.scene || 'idea'), col);
   }
-  return '<div class="slide" style="--ac:' + col + ';--acg:' + tint(col, .1) + '">' +
-    '<span class="slide-type">' + h(SLIDE_TYPES[type]) + ' · <span class="num">' + (i + 1) + '/' + n + '</span></span>' +
-    (s.image ? '<img class="slide-img" src="' + s.image + '" alt="">' : '') +
-    '<h2>' + h(s.title) + '</h2>' +
-    '<div class="slide-grid"><div>' + text + mediaHtml(s) + '</div><div class="slide-visual">' + visual + '</div></div></div>';
+  const many = (s.items || []).length + (s.points || []).length;
+  return wrap('<div class="slide-grid"><div>' + text + mediaHtml(s) + '</div><div class="slide-visual">' + visual + '</div></div>', (chart ? 'vis-chart' : 'vis-scene') + (many > 4 ? ' many' : ''));
 }
 
 // ---------- محرر النص المنسّق (contenteditable) ----------
@@ -183,7 +255,30 @@ const RTE = {
   val(root, key) { const a = $('[data-rte-area="' + key + '"]', root); if (!a) return ''; const v = sanitize(a.innerHTML).trim(); return stripHtml(v) ? v : ''; }
 };
 
-// ---------- رفع الصور (Base64 داخل قاعدة البيانات) — البيانات في متغيّر JS لا في خاصية HTML ----------
+// ---------- الصور: ضغط تلقائي عند الرفع + حفظ في مسار مستقل media/ يُحمَّل عند الحاجة ----------
+// المحتوى يحمل مرجعًا قصيرًا «media:المعرف» بدل الصورة نفسها، فتبقى مزامنة المحتوى خفيفة وسريعة.
+const MediaCache = {
+  data: {}, pending: {},
+  get(id) {
+    if (MediaCache.data[id] !== undefined) return MediaCache.data[id];
+    if (!MediaCache.pending[id]) { MediaCache.pending[id] = DB.get('media/' + id).then(v => { MediaCache.data[id] = v || ''; App.onData(); }); }
+    return '';
+  },
+  async loadAll() { const all = (await DB.get('media')) || {}; Object.keys(all).forEach(k => { MediaCache.data[k] = all[k]; }); }
+};
+function imgSrc(v) { if (!v) return ''; v = String(v); return v.indexOf('media:') === 0 ? MediaCache.get(v.slice(6)) : v; }
+function compressImage(file, o = {}) {
+  const max = o.max || 1600, q = o.q || 0.82;
+  return new Promise((res, rej) => {
+    const rd = new FileReader(); rd.onerror = rej;
+    rd.onload = () => { const im = new Image(); im.onerror = () => res(rd.result); im.onload = () => {
+      const keepPng = /png|gif|svg/.test(file.type) && file.size < 350 * 1024 && im.width <= max; if (keepPng) return res(rd.result);
+      const k = Math.min(1, max / Math.max(im.width, im.height)); const c = document.createElement('canvas'); c.width = Math.round(im.width * k); c.height = Math.round(im.height * k);
+      const x = c.getContext('2d'); if (/png|gif/.test(file.type)) { x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); } x.drawImage(im, 0, 0, c.width, c.height);
+      let out = c.toDataURL('image/webp', q); if (out.indexOf('data:image/webp') !== 0) out = c.toDataURL('image/jpeg', q); res(out.length < rd.result.length ? out : rd.result); }; im.src = rd.result; };
+    rd.readAsDataURL(file);
+  });
+}
 const ImgPick = {
   data: {},
   html(key, current) {
@@ -193,13 +288,19 @@ const ImgPick = {
   mount(root) {
     $$('[data-img]', root).forEach(box => {
       const key = box.getAttribute('data-img'); const th = $('[data-img-thumb]', box), err = $('[data-img-err]', box);
-      const show = () => { const v = ImgPick.data[key]; if (v) { th.src = v; th.style.display = ''; } else { th.removeAttribute('src'); th.style.display = 'none'; } };
-      show();
-      $('[data-img-file]', box).addEventListener('change', e => {
+      const show = () => { const v = imgSrc(ImgPick.data[key]); if (v) { th.src = v; th.style.display = ''; } else { th.removeAttribute('src'); th.style.display = 'none'; } };
+      show(); if (String(ImgPick.data[key] || '').indexOf('media:') === 0) setTimeout(show, 900);
+      $('[data-img-file]', box).addEventListener('change', async e => {
         const f = e.target.files && e.target.files[0]; err.textContent = ''; if (!f) return;
         if (!/^image\//.test(f.type)) { err.textContent = 'نوع الملف غير صالح — الصور فقط.'; e.target.value = ''; return; }
         if (f.size > MAX_IMG_MB * 1024 * 1024) { err.textContent = 'تجاوز الحجم المسموح (' + MAX_IMG_MB + ' ميجابايت كحد أقصى).'; e.target.value = ''; return; }
-        const rd = new FileReader(); rd.onload = () => { ImgPick.data[key] = rd.result; show(); }; rd.readAsDataURL(f);
+        err.textContent = '⏳ جارٍ ضغط الصورة ورفعها…';
+        try {
+          const data = await compressImage(f, key === 'brandLogo' ? { max: 800 } : {});
+          if (key === 'brandLogo') { ImgPick.data[key] = data; }
+          else { const id = genId('img'); await DB.set('media/' + id, data); MediaCache.data[id] = data; ImgPick.data[key] = 'media:' + id; }
+          err.textContent = '✅ ' + Math.round(f.size / 1024) + ' KB ← ' + Math.round(data.length * 0.75 / 1024) + ' KB بعد الضغط'; show();
+        } catch (x) { err.textContent = 'تعذر معالجة الصورة.'; }
       });
       $('[data-img-clear]', box).addEventListener('click', () => { ImgPick.data[key] = ''; show(); });
     });

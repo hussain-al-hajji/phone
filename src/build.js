@@ -15,7 +15,7 @@ const courseJs = 'const COURSE = Object.freeze(' + JSON.stringify(course).replac
 
 const html = `<!DOCTYPE html>
 <!--
-  التحول التجاري عبر الهاتف المحمول — ورشة تفاعلية مباشرة
+  التحول التجاري عبر الهاتف المحمول — منصة تدريبية تفاعلية
   ملف HTML واحد قائم بذاته (Vanilla JS) + Firebase Realtime Database
   الاتصال الحقيقي يعتمد على databaseURL في firebaseConfig (أسفل الملف).
   لمعاينة محلية دون لمس قاعدة البيانات الحقيقية أضف ?demo=1 إلى الرابط.
@@ -32,6 +32,8 @@ const html = `<!DOCTYPE html>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-check-compat.js"></script>
 <style>
 ${css}
 </style>

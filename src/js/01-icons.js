@@ -45,9 +45,18 @@ const ICONS = {
   instagram: '<rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4.2"/><path d="M17.5 6.5h.01"/>',
   whatsapp: '<path d="M3 21l1.7-4.8A8.5 8.5 0 1 1 8 19.6z"/><path d="M9 9.5c.3 1.9 2.6 4.3 4.5 4.9l1.2-1.2 2 1-.4 1.5c-3.5.5-7.6-3.6-7.3-7.2l1.5-.4 1 2z"/>',
   download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',
+  store: '<path d="M3 9l1.5-5h15L21 9"/><path d="M3 9h18v2a3 3 0 0 1-6 0 3 3 0 0 1-6 0 3 3 0 0 1-6 0z"/><path d="M5 13v8h14v-8"/><path d="M10 21v-5h4v5"/>',
+  truck: '<path d="M1 5h13v11H1z"/><path d="M14 9h4l4 4v3h-8"/><circle cx="5.5" cy="18" r="2"/><circle cx="17.5" cy="18" r="2"/>',
+  box: '<path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5"/><path d="M12 13v8"/>',
+  wallet: '<rect x="2" y="6" width="20" height="14" rx="3"/><path d="M16 13h2"/><path d="M6 6V4h12v2"/>',
+  clipboard: '<rect x="5" y="4" width="14" height="18" rx="2"/><path d="M9 4V2h6v2"/><path d="m9 13 2 2 4-4"/>',
+  calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18"/><path d="M8 3v4"/><path d="M16 3v4"/>',
+  award: '<circle cx="12" cy="9" r="6"/><path d="m8.5 14-1.5 8 5-3 5 3-1.5-8"/>',
+  grid: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
   lock: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>'
 };
-const AXIS_ICON_CHOICES = ['eye','route','alert','megaphone','target','gauge','layers','file','compass','card','shield','check','chart','radar','loop','sparkles','cart','phone','bag','bolt','users','bulb','trophy','rocket','heart','star'];
+const AXIS_ICON_CHOICES = ['store','truck','box','wallet','globe','clipboard','calendar','award','grid','eye','route','alert','megaphone','target','gauge','layers','file','compass','card','shield','check','chart','radar','loop','sparkles','cart','phone','bag','bolt','users','bulb','trophy','rocket','heart','star'];
+AXIS_ICON_CHOICES.splice(0, AXIS_ICON_CHOICES.length, ...new Set(AXIS_ICON_CHOICES.filter(k => ICONS[k])));
 function iconSvg(name, size = 22, color = 'currentColor', sw = 2) {
   return '<svg xmlns="http://www.w3.org/2000/svg" width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="' + color + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round" style="display:block;flex:none">' + (ICONS[name] || ICONS.star) + '</svg>';
 }

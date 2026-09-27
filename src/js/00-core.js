@@ -1,6 +1,6 @@
 'use strict';
 /* =====================================================================
-   التحول التجاري عبر الهاتف المحمول — تطبيق تفاعلي مباشر
+   التحول التجاري عبر الهاتف المحمول — منصة تدريبية تفاعلية
    ملف واحد قائم بذاته (Vanilla JS) + Firebase Realtime Database
    ===================================================================== */
 
@@ -8,25 +8,46 @@
 // 1) إعدادات Firebase — التفعيل الحقيقي يعتمد على وجود databaseURL فقط
 // ---------------------------------------------------------------------
 const firebaseConfig = {
-  databaseURL: "https://mobile-d6aea-default-rtdb.firebaseio.com/"
+  databaseURL: "https://mobile-d6aea-default-rtdb.firebaseio.com/",
+  // لتفعيل دخول المدرب وحماية البيانات (Firebase Authentication): الصق هنا قيم تطبيق الويب من
+  // Project settings ← Your apps ← Web app ← SDK setup and configuration ← Config
+  // ما دامت apiKey فارغة يعمل الموقع بالوضع القديم (رمز سري للإدارة وقواعد مفتوحة) — انظر README
+  apiKey: "",
+  authDomain: "",
+  projectId: "",
+  appId: "",
+  // Firebase App Check (reCAPTCHA v3): الصق «Site key» بعد تسجيل الموقع في App Check — فارغ = غير مفعّل
+  appCheckSiteKey: ""
 };
+// للاختبار الآلي فقط (محاكاة Firebase): لا يُستخدم في التشغيل العادي
+try { if (window.__FB_TEST_CONFIG) Object.assign(firebaseConfig, window.__FB_TEST_CONFIG); } catch (e) {}
 // ?demo=1 في الرابط يفرض وضع المحاكاة المحلي (للمعاينة دون لمس قاعدة البيانات الحقيقية)
 const FORCE_DEMO = (function () { try { return /[?&]demo=1/.test(location.search); } catch (e) { return false; } })();
-const DEMO_MODE = FORCE_DEMO || !firebaseConfig.databaseURL || firebaseConfig.databaseURL.indexOf('PASTE') !== -1 || typeof firebase === 'undefined';
+// وضع المحاكاة المحلي فقط عند طلبه صراحةً (?demo=1) أو عند غياب رابط القاعدة. إذا كان الرابط موجودًا
+// فلا انتقال للتخزين المحلي أبدًا — حتى لو تعذر تحميل مكتبة Firebase أو تأخر الاتصال (يُعرض تنبيه وإعادة محاولة).
+const DEMO_MODE = FORCE_DEMO || !firebaseConfig.databaseURL || firebaseConfig.databaseURL.indexOf('PASTE') !== -1;
 
-const ADMIN_PASS = '3719';
+const ADMIN_PASS = '3719'; // يُستخدم فقط في وضع المعاينة أو قبل تفعيل Firebase Authentication (عند غياب apiKey)
 const BADGE_THRESHOLD = 0.8;          // 80% لفتح الوسام وتهنئة الإنجاز
 const CONGRATS_DAYS_DEFAULT = 3;      // مدة بقاء التهنئة بعد انتهاء البرنامج
 const MEMBER_NO_FLOOR = 0;            // حد أدنى صريح لرقم العضوية
 const LAB_STAGE_MIN = 10;             // دقائق كل مرحلة في المختبر الختامي
 const MAX_IMG_MB = 5;
 const DEFAULT_GROUPS = 6;
+// ميزات خاصة بهذا المشروع: لا صفحة تعريفية (المنصة التعليمية مباشرة بعد الدخول)
+const HAS_LANDING = false;
+const HOME_LABEL = HAS_LANDING ? 'المنصة التعليمية' : 'الرئيسية'; // زر العودة لرئيسية المنصة
+const ATTEND_DAYS_DEFAULT = 2;        // أيام البرنامج
+const ATTEND_HOURS_DEFAULT = 4;       // ساعات كل يوم
+const CERT_THRESHOLD_DEFAULT = 90;    // نسبة الحضور المطلوبة لشهادة المشاركة
 
 const AXIS_COLORS = ['#0093A8','#00827F','#1F7E9E','#F58220','#D9670B','#E8960C','#3B4677','#56639E','#2B3360','#00A653','#008C45','#2E9E6B','#C98A00','#0B7A8C','#1F9E8F','#F5A300'];
 const UNIT_NAMES = {1:'فهم سلوك المستخدم وبناء تجربة شراء فعّالة',2:'إدارة التسويق داخل تطبيقات التجارة عبر الهاتف المحمول وربطه بسلوك المستخدم',3:'تصميم بنية التطبيق وتنظيم المحتوى لرفع كفاءة التحويل',4:'تحسين تجربة الدفع وتعزيز الثقة لرفع معدل الإتمام',5:'إدارة وتحسين أداء تطبيقات التجارة عبر الهاتف المحمول بشكل مستمر',6:'الذكاء الاصطناعي والتجارة عبر الهاتف المحمول'};
 const UNIT_KICKERS = {1:'الوحدة الأولى',2:'الوحدة الثانية',3:'الوحدة الثالثة',4:'الوحدة الرابعة',5:'الوحدة الخامسة',6:'فصل خاص'};
-const SLIDE_TYPES = {opening:'افتتاحية',principle:'مبدأ علمي',examples:'أمثلة',mistakes:'أخطاء وتصحيحات',tools:'أدوات',summary:'خلاصة'};
-const FORMATS = {text:'نصية حرة',mcq:'اختيار من متعدد',truefalse:'صح أم خطأ',fillblank:'إكمال الفراغ',comparePairs:'مقارنة نقيضين'};
+const UNIT_IDS = [1, 2, 3, 4, 5, 6];
+const SPECIAL_UNIT = 6; // «فصل خاص» لا يُحتسب ضمن عدد الوحدات
+const SLIDE_TYPES = {opening:'افتتاحية',hook:'افتتاحية بالأرقام',principle:'مبدأ علمي',framework:'إطار عمل',journey:'مسار ورحلة',numbers:'أرقام تهمّك',myth:'خرافة أم حقيقة',scenario:'موقف وقرار',versus:'قبل وبعد',examples:'أمثلة',tools:'أدوات',mistakes:'أخطاء وتصحيحات',checklist:'قائمة تحقق',summary:'خلاصة'};
+const FORMATS = {text:'نصية حرة',mcq:'اختيار من متعدد',truefalse:'صح أم خطأ',fillblank:'إكمال الفراغ',comparePairs:'مقارنة نقيضين',sim:'محاكاة تفاعلية'};
 const FORMAT_MODE = {mcq:'individual',truefalse:'individual',fillblank:'group',comparePairs:'group'};
 
 // ---------------------------------------------------------------------
@@ -80,6 +101,8 @@ function shade(hex, amt) { // amt: -1..1
   return '#' + [f(r), f(g), f(b)].map(v => Math.max(0, Math.min(255, v)).toString(16).padStart(2, '0')).join('');
 }
 function tint(hex, a) { let c = hex.replace('#', ''); const n = parseInt(c, 16); return 'rgba(' + (n >> 16) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')'; }
+// ترتيب عشوائي ثابت لكل بذرة (لخلط أسئلة وخيارات التقييم لكل متدرب)
+function seededOrder(n, seed) { let x = 7; for (const ch of String(seed)) x = (x * 31 + ch.charCodeAt(0)) % 1000003; const rnd = () => { x = (x * 9301 + 49297) % 233280; return x / 233280; }; const o = []; for (let i = 0; i < n; i++) o.push(i); for (let i = n - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [o[i], o[j]] = [o[j], o[i]]; } return o; }
 function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
 function loadScript(src) {
   loadScript.cache = loadScript.cache || {};
@@ -94,27 +117,59 @@ function downloadBlob(blob, name) { const a = document.createElement('a'); a.hre
 // ---------------------------------------------------------------------
 const DB = (function () {
   const norm = p => String(p || '').replace(/^\/+|\/+$/g, '');
+  // ---- حالة الاتصال والكتابات المعلقة (تعرضها الواجهة وتنبّه عند الإغلاق) ----
+  const status = { ready: false, connected: false, pending: 0, wasOffline: false, lib: true, listeners: [] };
+  const emit = () => status.listeners.forEach(fn => { try { fn(status); } catch (e) { console.error(e); } });
+  // منع أي كتابة على جذر القاعدة، وأي تحديث متعدد المسارات يستبدل عقدة كاملة من المستوى الأعلى دون إذن صريح
+  function guard(op, path, obj, o) {
+    const p = norm(path);
+    if (!p && op !== 'update') throw new Error('DB: ممنوع ' + op + ' على جذر القاعدة');
+    if (op === 'update') Object.keys(obj || {}).forEach(k => {
+      const full = norm((p ? p + '/' : '') + k); if (!full) throw new Error('DB: مفتاح فارغ في التحديث');
+      if (!p && full.indexOf('/') === -1 && !(o && o.allowTopLevel)) throw new Error('DB: استبدال العقدة «' + full + '» كاملة غير مسموح هنا');
+    });
+    if (!status.ready && !(o && o.beforeReady)) { const e = new Error('لم تكتمل قراءة البيانات من الخادم بعد — انتظر لحظات ثم أعد المحاولة'); if (DB.onReject) DB.onReject(e, path); return Promise.reject(e); }
+    return null;
+  }
+  function track(promise, desc, o) {
+    status.pending++; emit();
+    return promise.then(v => { status.pending--; if (!status.pending && status.wasOffline && status.connected) { status.wasOffline = false; if (DB.onSynced) DB.onSynced(); } emit(); return v; },
+      e => { status.pending--; emit(); if (DB.onReject && !(o && o.quiet)) DB.onReject(e, desc); throw e; });
+  }
   if (!DEMO_MODE) {
-    try {
-      firebase.initializeApp(firebaseConfig);
-      const db = firebase.database();
-      let offset = 0;
-      db.ref('.info/serverTimeOffset').on('value', s => { offset = s.val() || 0; });
-      return {
-        real: true,
-        watch(path, cb) { const ref = db.ref(norm(path)); const fn = s => cb(s.val()); ref.on('value', fn, () => {}); return () => ref.off('value', fn); },
-        get(path) { return db.ref(norm(path)).once('value').then(s => s.val()); },
-        set(path, v) { return db.ref(norm(path)).set(clean(v)); },
-        update(path, obj) { return db.ref(norm(path) || undefined).update(clean(obj)); },
-        remove(path) { return db.ref(norm(path)).remove(); },
-        push(path, v) { const r = db.ref(norm(path)).push(); return r.set(clean(v)).then(() => r.key); },
-        transaction(path, fn) { return db.ref(norm(path)).transaction(fn).then(r => r.snapshot.val()); },
-        now() { return Date.now() + offset; }
-      };
-    } catch (e) { console.warn('Firebase init failed, using local mode', e); }
+    if (typeof firebase === 'undefined') {
+      // تعذر تحميل مكتبة الاتصال: لا تخزين محلي ولا كتابة — القراءة تنتظر، والكتابة تُرفض برسالة واضحة
+      status.lib = false;
+      const fail = () => Promise.reject(new Error('تعذر تحميل مكتبة الاتصال بقاعدة البيانات'));
+      return { real: true, status, onStatus(fn) { status.listeners.push(fn); }, markReady() {}, watch() { return () => {}; }, get() { return new Promise(() => {}); }, set: fail, update: fail, remove: fail, push: fail, transaction: fail, now() { return Date.now(); } };
+    }
+    firebase.initializeApp(Object.fromEntries(Object.entries(firebaseConfig).filter(([k, v]) => v && k !== 'appCheckSiteKey')));
+    // App Check يُفعَّل قبل أي استخدام للقاعدة أو الدخول، حتى تُرفق كل الطلبات بشهادة أنها من موقعنا الحقيقي
+    if (firebaseConfig.appCheckSiteKey && typeof firebase.appCheck === 'function') {
+      try { if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+        const prov = firebase.appCheck.ReCaptchaV3Provider ? new firebase.appCheck.ReCaptchaV3Provider(firebaseConfig.appCheckSiteKey) : firebaseConfig.appCheckSiteKey;
+        firebase.appCheck().activate(prov, true); } catch (e) { console.warn('App Check', e); }
+    }
+    const db = firebase.database();
+    let offset = 0;
+    db.ref('.info/serverTimeOffset').on('value', s => { offset = s.val() || 0; });
+    db.ref('.info/connected').on('value', s => { const c = !!s.val(); if (!c && status.ready) status.wasOffline = true; status.connected = c; emit(); if (c && status.wasOffline && !status.pending) { status.wasOffline = false; if (DB.onSynced) DB.onSynced(); } });
+    return {
+      real: true, status,
+      onStatus(fn) { status.listeners.push(fn); },
+      markReady() { status.ready = true; emit(); },
+      watch(path, cb, onErr) { const ref = db.ref(norm(path)); const fn = s => cb(s.val()); ref.on('value', fn, e => { console.warn('watch', path, e); if (onErr) onErr(e); }); return () => ref.off('value', fn); },
+      get(path) { return db.ref(norm(path)).once('value').then(s => s.val()); },
+      set(path, v, o) { const g = guard('set', path, null, o); if (g) return g; return track(db.ref(norm(path)).set(clean(v)), path, o); },
+      update(path, obj, o) { const g = guard('update', path, obj, o); if (g) return g; return track(norm(path) ? db.ref(norm(path)).update(clean(obj)) : db.ref().update(clean(obj)), path || Object.keys(obj).join(','), o); },
+      remove(path, o) { const g = guard('remove', path, null, o); if (g) return g; return track(db.ref(norm(path)).remove(), path, o); },
+      push(path, v) { const g = guard('push', path); if (g) return g; const r = db.ref(norm(path)).push(); return track(r.set(clean(v)), path).then(() => r.key); },
+      transaction(path, fn, o) { const g = guard('transaction', path, null, o); if (g) return g; return track(db.ref(norm(path)).transaction(fn).then(r => r.snapshot.val()), path, o); },
+      now() { return Date.now() + offset; }
+    };
   }
   // ---- وضع المحاكاة المحلي (localStorage) — يطلق المراقبات بشكل متزامن فور التسجيل ----
-  const KEY = 'mcomm_demo_db';
+  const KEY = 'qdb_ecom_demo_db';
   let tree = {};
   try { tree = JSON.parse(SafeLS.get(KEY) || '{}') || {}; } catch (e) { tree = {}; }
   const watchers = [];
@@ -132,16 +187,20 @@ const DB = (function () {
   function notify(changed) { watchers.slice().forEach(w => { if (w.alive && related(w.path, changed)) { try { w.cb(clone(getAt(w.path))); } catch (e) { console.error(e); } } }); }
   const clone = v => v == null ? null : JSON.parse(JSON.stringify(v));
   window.addEventListener('storage', e => { if (e.key === KEY) { try { tree = JSON.parse(e.newValue || '{}') || {}; } catch (er) {} notify(''); } });
+  status.connected = true;
+  const lguard = (op, path, obj, o) => { const p = norm(path); if (!p && op !== 'update') throw new Error('DB: ممنوع ' + op + ' على جذر القاعدة'); if (op === 'update') Object.keys(obj || {}).forEach(k => { const full = norm((p ? p + '/' : '') + k); if (!full) throw new Error('DB: مفتاح فارغ'); if (!p && full.indexOf('/') === -1 && !(o && o.allowTopLevel)) throw new Error('DB: استبدال العقدة «' + full + '» كاملة غير مسموح هنا'); }); };
   return {
-    real: false,
+    real: false, status,
+    onStatus(fn) { status.listeners.push(fn); },
+    markReady() { status.ready = true; },
     watch(path, cb) { const w = { path, cb, alive: true }; watchers.push(w); try { cb(clone(getAt(path))); } catch (e) { console.error(e); } return () => { w.alive = false; const i = watchers.indexOf(w); if (i > -1) watchers.splice(i, 1); }; },
     get(path) {
       // قراءة لمرة واحدة: علم بولياني منفصل بدل استدعاء دالة الإلغاء داخل تعريفها (تفادي TDZ)
       return new Promise(res => { let called = false; let un = null; un = this.watch(path, v => { if (called) return; called = true; res(v); if (un) un(); }); if (called && un) un(); });
     },
-    set(path, v) { setAt(path, v); persist(); notify(path); return Promise.resolve(); },
-    update(path, obj) { const base = norm(path); Object.keys(obj || {}).forEach(k => setAt(base ? base + '/' + k : k, obj[k])); persist(); Object.keys(obj || {}).forEach(k => notify(base ? base + '/' + k : k)); return Promise.resolve(); },
-    remove(path) { setAt(path, null); persist(); notify(path); return Promise.resolve(); },
+    set(path, v, o) { lguard('set', path, null, o); setAt(path, v); persist(); notify(path); return Promise.resolve(); },
+    update(path, obj, o) { lguard('update', path, obj, o); const base = norm(path); Object.keys(obj || {}).forEach(k => setAt(base ? base + '/' + k : k, obj[k])); persist(); Object.keys(obj || {}).forEach(k => notify(base ? base + '/' + k : k)); return Promise.resolve(); },
+    remove(path, o) { lguard('remove', path, null, o); setAt(path, null); persist(); notify(path); return Promise.resolve(); },
     push(path, v) { const k = genId('k'); return this.set(norm(path) + '/' + k, v).then(() => k); },
     transaction(path, fn) { const nv = fn(clone(getAt(path))); if (nv !== undefined) { setAt(path, nv); persist(); notify(path); } return Promise.resolve(clone(getAt(path))); },
     now() { return Date.now(); }

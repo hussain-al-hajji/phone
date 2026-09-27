@@ -73,7 +73,7 @@ const PP = {
 function frontCover(title, sub, axes, extraLine) {
   return PP.multiBg() + PP.scatter(axes, 0) +
     '<div style="position:absolute;left:52px;right:52px;top:210px;background:#fff;border-radius:28px;box-shadow:0 20px 50px rgba(20,40,70,.16);padding:38px 30px;text-align:center">' +
-    '<div style="width:74px;height:74px;margin:0 auto 14px;border-radius:22px;background:linear-gradient(120deg,#0093A8,#00A653 45%,#F58220 75%,#FAB20B);display:flex;align-items:center;justify-content:center">' + iconSvg('cart', 38, '#fff', 2) + '</div>' +
+    '<div style="width:74px;height:74px;margin:0 auto 14px;border-radius:22px;background:linear-gradient(120deg,#0093A8,#00A653 45%,#F58220 75%,#FAB20B);display:flex;align-items:center;justify-content:center">' + iconSvg('store', 38, '#fff', 2) + '</div>' +
     '<h1 style="font-size:30px;font-weight:800">' + h(title) + '</h1>' + (extraLine ? '<div style="margin-top:10px;font-family:Cairo;font-weight:800;font-size:22px;color:#0093A8">' + h(extraLine) + '</div>' : '') +
     '<p style="margin-top:12px;color:#4A5470;font-size:15px">' + h(sub) + '</p><div style="margin-top:16px;font-family:IBM Plex Sans Arabic;font-size:12px;color:#7D879C" class="num">' + fmtDate(Date.now()) + '</div></div>';
 }
@@ -100,7 +100,7 @@ function axisCover(a, sub) {
   return '<div style="position:absolute;inset:0;background:linear-gradient(150deg,' + shade(col, .1) + ',' + shade(col, -.45) + ')"></div>' + PP.decor(a.id + 'pdf', .16) +
     '<div style="position:absolute;top:210px;left:40px;right:40px;text-align:center;color:#fff">' +
     '<div style="width:110px;height:110px;margin:0 auto 20px;border-radius:32px;background:rgba(255,255,255,.2);border:2px solid rgba(255,255,255,.45);display:flex;align-items:center;justify-content:center">' + iconSvg(a.icon || 'star', 60, '#fff', 1.7) + '</div>' +
-    '<div style="font-family:IBM Plex Sans Arabic;font-weight:700;font-size:13px;opacity:.9">' + h(sub || UNIT_NAMES[a.unit] || '') + '</div>' +
+    '<div style="font-family:IBM Plex Sans Arabic;font-weight:700;font-size:13px;opacity:.9">' + h(sub || Content.unitName(a.unit) || '') + '</div>' +
     '<h1 style="color:#fff;font-size:30px;font-weight:800;margin-top:6px">' + h(a.title) + '</h1>' + (a.classic ? '<div style="margin-top:8px;font-family:IBM Plex Sans Arabic;font-size:14px;opacity:.92">' + h(a.classic) + '</div>' : '') +
     '<p class="j" style="margin-top:18px;font-size:13.5px;line-height:1.9;opacity:.95">' + h(stripHtml(a.desc)) + '</p></div>';
 }
@@ -109,14 +109,29 @@ function pageHeader(a, label) {
   return '<div style="position:absolute;top:0;left:0;right:0;height:92px;background:linear-gradient(120deg,' + col + ',' + shade(col, -.4) + ');overflow:hidden">' + PP.decor(a.id + 'hd', .14) +
     '<div style="position:absolute;top:22px;right:26px;left:26px;display:flex;gap:12px;align-items:center;color:#fff"><div style="width:46px;height:46px;border-radius:14px;background:rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;flex:none">' + iconSvg(a.icon || 'star', 26, '#fff') + '</div><div style="flex:1;min-width:0"><div style="font-family:Cairo;font-weight:800;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + h(a.title) + '</div><div style="font-family:IBM Plex Sans Arabic;font-size:11px;opacity:.9">' + label + '</div></div></div></div>';
 }
+function pdfSkBody(s, t, col) {
+  const P = it => String(it || '').split('::').map(x => x.trim()); const its = arr(s.items).map(P); const intro = s.intro ? '<div class="j">' + richHtml(s.intro) + '</div>' : '';
+  const card = (inner, extra) => '<div style="border:1px solid ' + tint(col, .35) + ';border-radius:12px;padding:8px 11px;background:#fff;' + (extra || '') + '">' + inner + '</div>';
+  const grid = (cols, cells) => '<div style="display:grid;grid-template-columns:repeat(' + cols + ',1fr);gap:7px;margin:8px 0">' + cells.join('') + '</div>';
+  if (t === 'hook') return '<div style="display:flex;gap:14px;align-items:center"><div style="flex:none;width:34%;text-align:center;padding:12px;border-radius:16px;background:' + tint(col, .1) + '"><div class="num" style="font-family:Cairo;font-weight:900;font-size:2.6em;color:' + col + ';line-height:1.1">' + h(s.big || '') + '</div><div style="font-weight:700;font-size:.9em">' + h(s.label || '') + '</div>' + (s.src ? '<div style="font-size:.7em;color:#7D879C;margin-top:4px">' + h(s.src) + '</div>' : '') + '</div><div class="j" style="flex:1">' + withLede(richHtml(s.text)) + '</div></div>';
+  if (t === 'myth') return intro + its.map(p => '<div style="display:flex;gap:6px;margin:6px 0"><div style="flex:1;border:1.5px dashed #E5484D;border-radius:12px;padding:7px 10px;background:#FFF7F7"><b style="color:#C62F35;font-size:.8em">خرافة</b><div>«' + h(p[0]) + '»</div></div><div style="flex:1.2;border-radius:12px;padding:7px 10px;background:' + tint(col, .12) + '"><b style="color:' + col + ';font-size:.8em">الحقيقة</b><div>' + h(p[1] || '') + '</div></div></div>').join('');
+  if (t === 'scenario') return '<div class="j" style="background:#F7FAFB;border-radius:12px;padding:8px 11px;margin-bottom:6px"><b>📍 الموقف: </b>' + stripHtml(richHtml(s.text)) + '</div>' + arr(s.items).map((it, k) => { let x = String(it).trim(); const best = x.startsWith('*'); if (best) x = x.slice(1); const p = P(x); return card('<b>' + LETTERS[k] + ') ' + h(p[0]) + (best ? ' ✅' : '') + '</b>' + (p[1] ? '<div style="font-size:.85em;color:#4A5470">' + h(p[1]) + '</div>' : ''), 'margin:5px 0;' + (best ? 'border-color:#1F9D63;background:#EEFAF3' : '')); }).join('');
+  if (t === 'numbers') return intro + grid(Math.min(3, its.length), its.map(p => card('<div class="num" style="font-family:Cairo;font-weight:900;font-size:1.7em;color:' + col + ';line-height:1.2">' + h(p[0]) + '</div><div style="font-size:.88em">' + h(p[1] || '') + '</div>' + (p[2] ? '<div style="font-size:.68em;color:#7D879C">' + h(p[2]) + '</div>' : '')))) + (s.src ? '<div style="font-size:.7em;color:#7D879C">المصادر: ' + h(s.src) + '</div>' : '');
+  if (t === 'framework') return (s.big ? '<div style="font-family:Cairo;font-weight:900;font-size:1.6em;letter-spacing:4px;direction:ltr;color:' + col + '">' + h(s.big) + '</div>' : '') + intro + its.map(p => '<div style="display:flex;gap:8px;align-items:flex-start;margin:5px 0"><span style="flex:none;width:30px;height:30px;border-radius:9px;background:' + col + ';color:#fff;font-family:Cairo;font-weight:900;display:flex;align-items:center;justify-content:center">' + h(p[0]) + '</span><div><b>' + h(p[1] || '') + '</b> — <span style="color:#4A5470">' + h(p[2] || '') + '</span></div></div>').join('');
+  if (t === 'checklist') return intro + its.map(p => '<div style="display:flex;gap:8px;margin:4px 0"><span style="flex:none;width:16px;height:16px;border:2px solid ' + col + ';border-radius:4px;margin-top:5px"></span><div><b>' + h(p[0]) + '</b>' + (p[1] ? ' <span style="color:#4A5470;font-size:.88em">— ' + h(p[1]) + '</span>' : '') + '</div></div>').join('');
+  if (t === 'versus') return intro + '<table style="width:100%;border-collapse:collapse;font-size:.9em;margin-top:6px"><tr><th style="text-align:right;padding:5px;background:' + tint(col, .15) + '"></th><th style="text-align:right;padding:5px;background:#F0F2F5">قبل</th><th style="text-align:right;padding:5px;background:' + tint(col, .2) + '">بعد التحسين</th></tr>' + its.map(p => '<tr><td style="padding:5px;font-weight:700;color:' + col + ';border-bottom:1px solid #E1E9EC">' + h(p[0]) + '</td><td style="padding:5px;color:#7D879C;border-bottom:1px solid #E1E9EC">' + h(p[1] || '') + '</td><td style="padding:5px;font-weight:600;border-bottom:1px solid #E1E9EC">' + h(p[2] || '') + '</td></tr>').join('') + '</table>';
+  if (t === 'journey') return intro + its.map((p, k) => '<div style="display:flex;gap:8px;align-items:flex-start;margin:5px 0"><span style="flex:none;width:30px;height:30px;border-radius:50%;border:2px solid ' + col + ';display:flex;align-items:center;justify-content:center">' + h(p[0]) + '</span><div><b><span class="num" style="color:' + col + '">' + (k + 1) + '.</span> ' + h(p[1] || '') + '</b> — <span style="color:#4A5470">' + h(p[2] || '') + '</span></div></div>').join('');
+  return intro;
+}
 function slidePage(a, s, i, n, pageNo) {
   const col = Content.color(a); const t = SLIDE_TYPES[s.type] ? s.type : 'principle';
   let body = '<div style="display:inline-block;padding:3px 12px;border-radius:999px;background:' + tint(col, .14) + ';color:' + shade(col, -.3) + ';font-family:IBM Plex Sans Arabic;font-weight:700;font-size:11.5px">' + h(SLIDE_TYPES[t]) + '</div>' +
-    (s.image ? '<img src="' + s.image + '" style="width:100%;max-height:190px;object-fit:cover;border-radius:14px;margin-top:10px;display:block">' : '') +
+    (s.image ? '<img src=\"' + imgSrc(s.image) + '\" style="width:100%;max-height:190px;object-fit:cover;border-radius:14px;margin-top:10px;display:block">' : '') +
     '<h2 style="font-size:1.45em;font-weight:800;margin:10px 0 8px">' + h(s.title) + '</h2>';
   const rule = s.rule ? '<div class="rule j" style="background:' + tint(col, .1) + ';border-right:4px solid ' + col + '">' + sanitize(richHtml(s.rule)) + '</div>' : '';
   if (t === 'opening' || t === 'summary') body += '<div class="j">' + withLede(richHtml(s.text)) + '</div>' + rule;
   else if (t === 'principle') body += '<div class="j">' + richHtml(s.intro) + '</div>' + (s.points && s.points.length ? PP.numbered(s.points.map(p => boldTerm(p)), col) : '') + rule;
+  else if (SK_TYPES.indexOf(t) > -1) body += pdfSkBody(s, t, col) + rule;
   else body += (s.items || []).map(it => { const k = String(it).indexOf('::'); const hd = k > -1 ? it.slice(0, k) : it, bd = k > -1 ? it.slice(k + 2) : ''; return '<div class="pair"><div class="h" style="background:' + (t === 'mistakes' ? '#FDECEC;color:#A12A2E' : tint(col, .12)) + '">' + h(hd.trim()) + '</div>' + (bd ? '<div class="b j" style="' + (t === 'mistakes' ? 'background:#EEFAF3;color:#146B40' : '') + '">' + (t === 'mistakes' ? '<b>✓ التصحيح: </b>' : '') + h(bd.trim()) + '</div>' : '') + '</div>'; }).join('') + rule;
   return pageHeader(a, 'الشريحة <span class="num">' + (i + 1) + ' / ' + n + '</span>') + '<div class="fit" style="top:110px;bottom:44px;right:30px;left:30px;line-height:1.85">' + body + '</div>' + PP.foot(Content.courseTitle(), pageNo);
 }
@@ -125,6 +140,7 @@ function slidePage(a, s, i, n, pageNo) {
 async function buildContentPdf() {
   const pm = progressModal('📄 استخراج المحتوى');
   try {
+    await MediaCache.loadAll();
     const p = Content.pdf(); const axes = Content.eligibleAxes(); const title = p.coverTitle || Content.courseTitle();
     const pages = [frontCover(title, p.coverSub, axes)];
     tocPages(axes, title).forEach(x => pages.push(x));
@@ -136,10 +152,10 @@ async function buildContentPdf() {
 }
 
 // ---------- تهنئة الإنجاز: صفحة A4 أفقية مستقلة تمامًا ----------
-async function buildCongratsPdf(name) {
-  const pm = progressModal('🏆 تهنئة الإنجاز');
+async function buildCongratsPdf(name, kind = 'congrats') {
+  const pm = progressModal(kind === 'cert' ? '🎓 شهادة المشاركة' : '🏆 تهنئة الإنجاز');
   try {
-    const c = Content.congrats(); const rep = s => String(s || '').replace(/\{\{name\}\}/g, name).replace(/\{\{courseTitle\}\}/g, Content.courseTitle()).replace(/\{\{date\}\}/g, fmtDate(Date.now()));
+    const c = Content.doc(kind); const rep = s => String(s || '').replace(/\{\{name\}\}/g, name).replace(/\{\{courseTitle\}\}/g, Content.courseTitle()).replace(/\{\{date\}\}/g, fmtDate(Date.now()));
     const axes = Content.eligibleAxes();
     const page = PP.multiBg() + '<div style="position:absolute;inset:26px;border-radius:30px;border:3px solid rgba(0,147,168,.25)"></div>' +
       axes.slice(0, 8).map((a, i) => { const pos = [[60, 60], [1010, 60], [60, 660], [1010, 660], [300, 40], [770, 690], [40, 360], [1030, 360]][i]; const col = Content.color(a); return '<div style="position:absolute;left:' + pos[0] + 'px;top:' + pos[1] + 'px;width:56px;height:56px;border-radius:18px;background:' + tint(col, .15) + ';display:flex;align-items:center;justify-content:center">' + iconSvg(a.icon, 30, col) + '</div>'; }).join('') +
@@ -149,7 +165,7 @@ async function buildCongratsPdf(name) {
       c.paragraphs.map(p => '<p style="font-size:18px;color:#4A5470;margin-top:8px;line-height:1.8">' + h(rep(p)) + '</p>').join('') +
       '<div style="position:absolute;bottom:28px;left:60px;right:60px;display:flex;justify-content:space-between;font-family:IBM Plex Sans Arabic;font-size:15px;color:#4A5470"><span>' + h(rep(c.footerRight)) + '</span><span>' + h(rep(c.footerLeft)) + '</span></div></div>';
     const doc = await PDFE.build([page], A4L, (i, n) => pm.set(i, n));
-    doc.save('تهنئة إنجاز - ' + name + '.pdf'); pm.close();
+    doc.save((kind === 'cert' ? 'شهادة مشاركة - ' : 'تهنئة إنجاز - ') + name + '.pdf'); pm.close();
   } catch (e) { pm.close(); UI.alert('تعذر إنشاء الملف: ' + h(e.message || e)); }
 }
 
@@ -164,6 +180,7 @@ function participationOf(uid) {
   return sections;
 }
 function answerPdfHtml(e, p) {
+  if (e.format === 'sim') return '<div class="j" style="background:#F7FAFB;border:1px solid #E1E9EC;border-radius:12px;padding:10px 12px">🎮 ' + h(p.summary || '') + '</div>';
   if (e.format === 'text') return '<div class="j" style="white-space:pre-wrap;background:#F7FAFB;border:1px solid #E1E9EC;border-radius:12px;padding:10px 12px">' + h(p.text || '') + '</div>';
   const a = ansList(p.answers, e.items.length);
   return '<div class="nl">' + e.items.map((it, i) => {
@@ -203,6 +220,7 @@ function csvEsc(v) { const s = String(v == null ? '' : v); return /[",\n\r]/.tes
 function csvBlob(rows) { return new Blob(['﻿' + rows.map(r => r.map(csvEsc).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' }); }
 function answerText(e, p) {
   if (e.format === 'text') return p.text || '';
+  if (e.format === 'sim') return p.summary || '';
   const a = ansList(p.answers, e.items.length);
   return e.items.map((it, i) => { const v = a[i]; let t = '—'; if (v != null && v !== '') { if (e.format === 'mcq') t = LETTERS[v] + ') ' + (it.options[v] || ''); else if (e.format === 'truefalse') t = (v === true || v === 'true') ? 'صح' : 'خطأ'; else if (e.format === 'fillblank') t = v; else t = '(' + (v === 'a' ? 'أ' : 'ب') + ') ' + it[v]; } return (i + 1) + ': ' + t; }).join(' | ');
 }
@@ -211,14 +229,15 @@ function exportAllCsv() {
   Content.allExercises().forEach(({ e, section }) => {
     const ps = Store.posts[e.id] || {};
     Object.keys(ps).forEach(k => { const p = ps[k]; if (!p) return; const isG = k.charAt(0) === 'g' && e.mode === 'group';
-      rows.push([section, e.title, FORMATS[e.format] || '', e.mode === 'group' ? 'جماعي' : 'فردي', isG ? Groups.label(+k.slice(1)) + ' (' + (p.name || '') + ')' : (p.name || ''), isG ? '' : (p.role || ''), answerText(e, p), e.format === 'text' ? '' : exCorrectness(e, p.answers) + ' من ' + e.items.length, Object.keys(p.likes || {}).length, p.ts ? fmtTime(p.ts) : '']); });
+      rows.push([section, e.title, FORMATS[e.format] || '', e.mode === 'group' ? 'جماعي' : 'فردي', isG ? Groups.label(+k.slice(1)) + ' (' + (p.name || '') + ')' : (p.name || ''), isG ? '' : (p.role || ''), answerText(e, p), e.format === 'text' ? '' : e.format === 'sim' ? (p.metric != null ? p.metric : '') : exCorrectness(e, p.answers) + ' من ' + e.items.length, Object.keys(p.likes || {}).length, p.ts ? fmtTime(p.ts) : '']); });
   });
-  Object.keys(Store.labAnswers || {}).forEach(g => { const ga = Store.labAnswers[g] || {}; COURSE.lab.stages.forEach((s, i) => { const a = ga['s' + i]; if (a) rows.push(['المختبر الختامي', (i + 1) + '. ' + s.title, 'نصية حرة', 'جماعي', Groups.label(+g.slice(1)) + ' (' + (a.name || '') + ')', '', a.text || '', '', Object.keys(a.likes || {}).length, a.ts ? fmtTime(a.ts) : '']); }); });
+  Object.keys(Store.labAnswers || {}).forEach(g => { const ga = Store.labAnswers[g] || {}; Content.lab().stages.forEach((s, i) => { const a = ga['s' + i]; if (a) rows.push(['المختبر الختامي', (i + 1) + '. ' + s.title, 'نصية حرة', 'جماعي', Groups.label(+g.slice(1)) + ' (' + (a.name || '') + ')', '', a.text || '', '', Object.keys(a.likes || {}).length, a.ts ? fmtTime(a.ts) : '']); }); });
+  const A = Content.assess(); ['pre', 'post'].forEach(ph => Assess.list(ph).forEach(x => rows.push([ph === 'pre' ? 'التقييم القبلي' : 'التقييم البعدي', A.title || '', 'اختيار من متعدد', 'فردي', x.name || '', x.role || '', answerText(A, x), x.score + ' من ' + A.items.length, '', x.ts ? fmtTime(x.ts) : ''])));
   downloadBlob(csvBlob(rows), 'مشاركات البرنامج.csv'); UI.toast('✅ تم تصدير ' + (rows.length - 1) + ' مشاركة');
 }
 function personCsvBlob(uid) {
   const u = Store.users[uid] || {}; const rows = [['المتدرب', 'القسم', 'التمرين', 'النموذج', 'السياق', 'الإجابة', 'النتيجة', 'التاريخ']];
-  participationOf(uid).forEach(sec => sec.list.forEach(({ e, r }) => rows.push([u.name || '', sec.a.title, e.title, FORMATS[e.format] || '', r.group ? 'ضمن ' + Groups.label(r.group) : 'فردي', answerText(e, r.p), e.format === 'text' ? '' : exCorrectness(e, r.p.answers) + ' من ' + e.items.length, r.p.ts ? fmtTime(r.p.ts) : ''])));
+  participationOf(uid).forEach(sec => sec.list.forEach(({ e, r }) => rows.push([u.name || '', sec.a.title, e.title, FORMATS[e.format] || '', r.group ? 'ضمن ' + Groups.label(r.group) : 'فردي', answerText(e, r.p), e.format === 'text' || e.format === 'sim' ? '' : exCorrectness(e, r.p.answers) + ' من ' + e.items.length, r.p.ts ? fmtTime(r.p.ts) : ''])));
   if (rows.length === 1) rows.push([u.name || '', '—', '—', '—', '—', 'لا توجد مشاركات مسجلة لهذا المتدرب حتى الآن', '', fmtDate(Date.now())]);
   return csvBlob(rows);
 }
@@ -253,8 +272,67 @@ async function saveMemberCard(me) {
     c.fillStyle = '#4A5470'; c.font = '500 28px "IBM Plex Sans Arabic", sans-serif'; c.fillText(me.role || '', W - 110, 305);
     c.fillStyle = '#7D879C'; c.font = '700 22px "IBM Plex Sans Arabic", sans-serif'; c.fillText('رقم العضوية', W - 110, 400);
     c.direction = 'ltr'; c.textAlign = 'right'; c.fillStyle = '#1C2340'; c.font = '800 76px Cairo, sans-serif'; c.fillText(pad4(me.member || 0), W - 110, 480);
-    c.textAlign = 'left'; c.direction = 'rtl'; c.fillStyle = '#7D879C'; c.font = '500 20px "IBM Plex Sans Arabic", sans-serif'; c.fillText('ادخل به من أي جهاز: «مسجّل مسبقًا؟ الدخول برقم العضوية»', 110, 480);
+    const code = me.code || (Me.data && Me.data.uid === me.uid && Me.data.code) || Store.mySecret || '';
+    if (code) { c.textAlign = 'left'; c.direction = 'rtl'; c.fillStyle = '#7D879C'; c.font = '700 22px "IBM Plex Sans Arabic", sans-serif'; c.fillText('رمز الدخول الشخصي', 110 + 260, 400); c.direction = 'ltr'; c.fillStyle = '#0093A8'; c.font = '800 56px Cairo, sans-serif'; c.fillText(code, 110, 478); }
+    c.textAlign = 'left'; c.direction = 'rtl'; c.fillStyle = '#7D879C'; c.font = '500 19px "IBM Plex Sans Arabic", sans-serif'; c.fillText('للدخول من جهاز آخر: «مسجّل مسبقًا؟» ثم الرقم والرمز معًا', 110, 540);
     await new Promise(res => cv.toBlob(b => { downloadBlob(b, 'رقم العضوية ' + pad4(me.member || 0) + '.png'); res(); }, 'image/png'));
     UI.toast('✅ تم حفظ بطاقة رقم العضوية على جهازك');
   } catch (e) { UI.alert('تعذر حفظ البطاقة: ' + h(e.message || e)); }
+}
+
+
+// ---------- سجل الحضور CSV ----------
+function exportAttendanceCsv() {
+  const users = Store.users || {}; const c = Attend.cfg();
+  const rows = [['المتدرب', 'المسمى', 'المشروع', 'رقم العضوية'].concat(Attend.days().map(d => 'اليوم ' + d + ' (ساعات)')).concat(['نسبة الحضور', 'مستحق للشهادة'])];
+  Object.keys(users).sort((a, b) => (users[a].name || '').localeCompare(users[b].name || '', 'ar')).forEach(u => rows.push([users[u].name || '', users[u].role || '', users[u].org || '', pad4(users[u].member || 0)].concat(Attend.days().map(d => Attend.hoursOf(u, d))).concat([Attend.pct(u) + '%', Attend.eligible(u) ? 'نعم' : 'لا'])));
+  downloadBlob(csvBlob(rows), 'سجل الحضور.csv'); UI.toast('✅ تم التصدير (الحد المطلوب ' + c.threshold + '%)');
+}
+
+// ---------- دليل المدرب (A4 عمودي) ----------
+async function buildGuidePdf() {
+  const pm = progressModal('📘 دليل المدرب');
+  try {
+    const g = Content.guide(); const C = '#0093A8'; const T = Content.courseTitle(); const axes = Content.eligibleAxes(); const pages = [];
+    const head = (t, sub) => '<div style="position:absolute;top:0;left:0;right:0;height:98px;background:linear-gradient(120deg,#3B4677,#0093A8)"><div style="position:absolute;top:14px;right:34px;left:34px;color:#fff"><div style="font-family:IBM Plex Sans Arabic;font-size:12px;opacity:.85">' + h(T) + ' · دليل المدرب</div><div style="font-family:Cairo;font-weight:800;font-size:21px">' + h(t) + '</div>' + (sub ? '<div style="font-family:IBM Plex Sans Arabic;font-size:11.5px;opacity:.9">' + h(sub) + '</div>' : '') + '</div></div>';
+    const page = (t, body, sub) => pages.push('<div style="position:absolute;inset:0;background:#F8FBFC"></div>' + head(t, sub) + '<div class="fit" style="top:116px;bottom:46px;right:34px;left:34px;line-height:1.8">' + body + '</div>' + PP.foot(T + ' — دليل المدرب', pages.length + 1));
+    const tbl = (heads, rows, w) => '<table style="width:100%;border-collapse:collapse;font-size:12.5px"><tr>' + heads.map((x, i) => '<th style="background:' + C + ';color:#fff;padding:7px;text-align:right;' + (w && w[i] ? 'width:' + w[i] : '') + '">' + x + '</th>').join('') + '</tr>' + rows.map((r, i) => '<tr>' + r.map(c => '<td style="padding:6px 7px;border-bottom:1px solid #DDE7EA;vertical-align:top;background:' + (i % 2 ? '#fff' : '#EEF7F8') + '">' + c + '</td>').join('') + '</tr>').join('') + '</table>';
+    const box = (t, inner) => '<div style="background:#fff;border:1px solid #DDE7EA;border-radius:14px;padding:12px 14px;margin-bottom:12px"><div style="font-family:Cairo;font-weight:800;color:' + C + ';margin-bottom:4px">' + t + '</div>' + inner + '</div>';
+    // الغلاف
+    pages.push(PP.multiBg() + PP.scatter(axes, 0).replace(/left:(\d+)px/g, (m, x) => 'left:' + Math.round(x * 1.35) + 'px').replace(/top:(\d+)px/g, (m, y) => 'top:' + Math.round(y * 1.4) + 'px') +
+      '<div style="position:absolute;left:80px;right:80px;top:330px;background:#fff;border-radius:30px;box-shadow:0 20px 50px rgba(20,40,70,.16);padding:44px 36px;text-align:center"><div style="width:84px;height:84px;margin:0 auto 16px;border-radius:24px;background:linear-gradient(120deg,#3B4677,#0093A8);display:flex;align-items:center;justify-content:center">' + iconSvg('file', 44, '#fff', 2) + '</div>' +
+      '<div style="font-family:IBM Plex Sans Arabic;font-weight:700;color:' + C + ';font-size:16px">دليل المدرب</div><h1 style="font-size:32px;font-weight:800;margin-top:6px">' + h(T) + '</h1><p style="margin-top:14px;color:#4A5470;font-size:16px">' + (g.days.filter(d => d.length).length ? '<span class="num">' + g.days.filter(d => d.length).length + '</span> ' + (g.days.filter(d => d.length).length === 2 ? 'يوم تدريبي' : 'أيام') + ' · ' : '') + '<span class="num">' + axes.length + '</span> محورًا</p><p style="color:#4A5470;font-size:14px">الأهداف · المنهجية · الجدول الزمني · ملاحظات كل شريحة · مفتاح التقييم</p><div class="num" style="margin-top:14px;font-size:12px;color:#7D879C">' + fmtDate(Date.now()) + '</div></div>');
+    // الأهداف والمنهجية والفئة المستهدفة
+    page('نظرة عامة على البرنامج', (g.objectives.length ? box('أهداف التعلم', PP.numbered(g.objectives.map(h), C)) : '') + (g.methodology.length ? box('المنهجية', PP.numbered(g.methodology.map(h), '#3B4677')) : '') +
+      (!(g.audience || []).length ? '' : box('الفئة المستهدفة', '<ul style="margin:0">' + g.audience.map(x => '<li>' + x + '</li>').join('') + '</ul>')) +
+      box('التقييم والشهادة', '<ul style="margin:0"><li>تقييم قبلي وبعدي من <span class="num">' + Content.assess().items.length + '</span> أسئلة اختيار من متعدد تطبيقية، بترتيب مختلف لكل متدرب.</li>' + (Attend.certOn() ? '<li>شهادة مشاركة لمن يحضر <span class="num">' + Attend.cfg().threshold + '%</span> على الأقل من مدة البرنامج (تسجيل حضور برمز يومي).</li>' : '') + '<li>تقييم البرنامج بعد التدريب بالنجوم ومؤشر صافي التوصية، وتقرير ختام آلي من لوحة الإدارة.</li></ul>'));
+    // جدولا اليومين
+    g.days.forEach((d, i) => { if (!d.length) return; page('جدول اليوم ' + (i + 1), tbl(['الوقت', 'الدقائق', 'الفقرة', 'ملاحظات التنفيذ'], d.map(x => ['<span class="num">' + h(x.t) + '</span>', '<span class="num">' + x.min + '</span>', h(x.act), h(x.note)]), ['60px', '56px', '', '34%']) + '<div style="margin-top:8px;font-family:IBM Plex Sans Arabic;font-size:12px;color:#7D879C">المجموع: <span class="num">' + d.reduce((a, b) => a + (+b.min || 0), 0) + '</span> دقيقة</div>'); });
+    // المحاور
+    axes.forEach(a => {
+      const exs = Content.exercisesOf(a.id);
+      page(a.title, (a.outcome ? '<div style="background:#EEF7F2;border-right:4px solid #00A653;border-radius:10px;padding:8px 12px;margin-bottom:10px;font-size:13px"><b>🎯 مخرج التعلم: </b>' + h(a.outcome) + '</div>' : '') +
+        tbl(['#', 'الشريحة', 'ملاحظات المدرب'], a.slides.map((sl, k) => ['<span class="num">' + (k + 1) + '</span>', '<b>' + h(sl.title) + '</b><div style="font-size:11px;color:#7D879C">' + h(SLIDE_TYPES[sl.type] || '') + '</div>', h(sl.note || '—')]), ['26px', '36%', '']) +
+        (exs.length ? '<div style="margin-top:10px;font-family:Cairo;font-weight:800;color:' + C + '">التمارين</div>' + tbl(['التمرين', 'النموذج', 'النوع'], exs.map(e => [h((e.icon || '') + ' ' + e.title), h(FORMATS[e.format] || '') + (e.format === 'sim' ? ' — ' + h(SIM_TYPES[e.sim] || '') : ''), e.mode === 'group' ? 'جماعي' : 'فردي'])) : ''),
+        (Content.unitKicker(a.unit) ? Content.unitKicker(a.unit) + ' — ' + Content.unitName(a.unit) : '') + (a.duration ? ' · ' + a.duration : ''));
+    });
+    // الملاحق: مفتاح التقييم، المختبر، التقييم
+    const A = Content.assess();
+    page('ملحق: مفتاح إجابات التقييم القبلي والبعدي', '<div style="font-size:12px;color:#A12A2E;margin-bottom:8px">سري — للمدرب فقط. ترتيب الأسئلة والخيارات يختلف على أجهزة المتدربين.</div>' + tbl(['#', 'السؤال', 'الإجابة الصحيحة'], A.items.map((it, i) => ['<span class="num">' + (i + 1) + '</span>', h(it.q), '<b style="color:#00A653">' + h(it.options[it.answer] || '') + '</b>']), ['26px', '', '34%']));
+    const L = Content.lab(); const sv = Content.survey({ all: true });
+    page('ملحق: المختبر الختامي وتقييم البرنامج', box(h(L.title) + ' · <span class="num">' + L.stages.length + '</span> مراحل × <span class="num">' + L.minutes + '</span> دقائق', '<div class="j" style="font-size:12.5px">' + h(stripHtml(L.intro)) + '</div>' + PP.numbered(L.stages.map(x => '<b>' + h(x.icon + ' ' + x.title) + ':</b> ' + h(x.task)), C)) +
+      (sv ? box('بنود تقييم البرنامج', '<ul style="margin:0">' + sv.rates.map(r => '<li>' + h(r) + ' (1–5 نجوم)</li>').join('') + (sv.nps ? '<li>' + h(sv.nps) + ' (0–10)</li>' : '') + '<li>' + h(stripHtml(sv.task)) + '</li></ul>') : ''));
+    const doc = await PDFE.build(pages, A4P, (i, n) => pm.set(i, n));
+    doc.save('دليل المدرب - ' + safeName(T) + '.pdf'); pm.close();
+  } catch (e) { pm.close(); UI.alert('تعذر إنشاء الدليل: ' + h(e.message || e)); }
+}
+
+// ---------- المسجّلون CSV (كل حقول التسجيل + الموافقات + الحضور) ----------
+function exportUsersCsv() {
+  const users = Store.users || {}; const fs = RegFields.all();
+  const rows = [['رقم العضوية'].concat(fs.map(f => f.label)).concat(['تاريخ التسجيل', 'موافقة الخصوصية', 'موافقة المتابعة'].concat(Attend.on() ? ['نسبة الحضور'] : [], ['التقييم القبلي', 'التقييم البعدي', 'نسبة الإنجاز']))];
+  const n = Content.assess().items.length;
+  Object.keys(users).sort((a, b) => (users[a].member || 0) - (users[b].member || 0)).forEach(u => { const x = users[u]; const pre = Assess.rec('pre', u), post = Assess.rec('post', u);
+    rows.push([pad4(x.member || 0)].concat(fs.map(f => RegFields.val(x, f.key))).concat([x.ts ? fmtTime(x.ts) : '', x.consent && x.consent.privacy ? 'نعم' : '—', x.consent && x.consent.followup ? 'نعم' : 'لا'].concat(Attend.on() ? [Attend.pct(u) + '%'] : [], [pre && pre.done ? Assess.score(pre.answers) + '/' + n : '', post && post.done ? Assess.score(post.answers) + '/' + n : '', Math.round(Progress.forUser(u).pct * 100) + '%']))); });
+  downloadBlob(csvBlob(rows), 'المسجلون.csv');
 }
