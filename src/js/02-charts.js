@@ -5,6 +5,7 @@
 const Charts = (function () {
   const W = 600;
   const FONT = "'IBM Plex Sans Arabic','Noto Sans Arabic',sans-serif";
+  const FONT_ATTR = "IBM Plex Sans Arabic, Noto Sans Arabic, sans-serif";
   function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
   function parseItem(raw) {
     let t = String(raw || '').trim(), danger = false, hi = false;
@@ -32,7 +33,7 @@ const Charts = (function () {
   function tintC(hex, a) { let c = hex.replace('#', ''); const n = parseInt(c, 16); return 'rgba(' + (n >> 16) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')'; }
   const arrow = (x1, y1, x2, y2, c, dash) => '<line x1="' + x1.toFixed(1) + '" y1="' + y1.toFixed(1) + '" x2="' + x2.toFixed(1) + '" y2="' + y2.toFixed(1) + '" stroke="' + c.dark + '" stroke-width="2.4"' + (dash ? ' stroke-dasharray="5 5"' : '') + ' marker-end="url(#ah' + c.id + ')"/>';
   const rect = (x, y, w, hh, fill, stroke, r = 14, extra = '') => '<rect x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + w.toFixed(1) + '" height="' + hh.toFixed(1) + '" rx="' + r + '" fill="' + fill + '"' + (stroke ? ' stroke="' + stroke + '" stroke-width="1.6"' : '') + extra + '/>';
-  const badge = (cx, cy, n, c, r = 13) => '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="' + c.color + '" stroke="#fff" stroke-width="2.5"/>' + '<text x="' + cx + '" y="' + (cy + 4.8) + '" text-anchor="middle" font-family="Arial,sans-serif" font-size="13" font-weight="700" fill="#fff">' + n + '</text>';
+  const badge = (cx, cy, n, c, r = 13) => '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="' + c.color + '" stroke="#fff" stroke-width="2.5"/>' + '<text x="' + cx + '" y="' + (cy + 4.8) + '" text-anchor="middle" font-family="' + FONT_ATTR + '" font-size="13" font-weight="700" fill="#fff">' + n + '</text>';
   const fmtNum = v => { const n = Number(v); return isFinite(n) ? n.toLocaleString('en-US') : esc(v); };
   const itemHtml = (it, fs) => esc(it.label) + (it.desc ? '<div style="font-weight:400;color:#4A5470;font-size:' + (fs - 2) + 'px;margin-top:2px">' + esc(it.desc) + '</div>' : '');
   const boxFill = (it, c) => it.danger ? ['#FDECEC', '#E5484D'] : it.hi ? [c.color, c.color] : ['#FFFFFF', c.mid];
@@ -221,7 +222,7 @@ const Charts = (function () {
       body += rect(neg ? x : zeroX - len, y + 6, Math.max(2, len), rh - 12, col, null, 8);
       const tx = (v >= 0 ? zeroX - len : zeroX + len);
       const vtxt = (v > 0 && neg ? '+' : '') + v;
-      body += '<text x="' + (v >= 0 ? tx - 6 : tx + 6).toFixed(1) + '" y="' + (y + rh / 2 + 5) + '" text-anchor="' + (v >= 0 ? 'end' : 'start') + '" font-family="Arial,sans-serif" font-size="14" font-weight="700" fill="' + col + '">' + esc(vtxt) + (neg ? '%' : '') + '</text>';
+      body += '<text x="' + (v >= 0 ? tx - 6 : tx + 6).toFixed(1) + '" y="' + (y + rh / 2 + 5) + '" text-anchor="' + (v >= 0 ? 'end' : 'start') + '" font-family="' + FONT_ATTR + '" font-size="14" font-weight="700" fill="' + col + '">' + esc(vtxt) + (neg ? '%' : '') + '</text>';
     });
     if (neg) body += '<line x1="' + zeroX + '" y1="0" x2="' + zeroX + '" y2="' + (its.length * (rh + gap)) + '" stroke="#7D879C" stroke-width="1.5" stroke-dasharray="3 3"/>';
     return svgWrap(8 + its.length * (rh + gap), body, c);
@@ -285,11 +286,11 @@ const Charts = (function () {
     const total = n * bw + (n - 1) * opW; let x = W - (W - total) / 2 - bw;
     parts.forEach((p, i) => {
       body += rect(x, 8, bw, bh, c.light, c.mid, 14) + fo(x, 8, bw, bh, esc(p), { fs: 15, weight: 700, align: 'center' });
-      if (i < n - 1) body += '<text x="' + (x - opW / 2) + '" y="' + (8 + bh / 2 + 8) + '" text-anchor="middle" font-family="Arial" font-size="24" font-weight="700" fill="' + c.dark + '">+</text>';
+      if (i < n - 1) body += '<text x="' + (x - opW / 2) + '" y="' + (8 + bh / 2 + 8) + '" text-anchor="middle" font-family="' + FONT_ATTR + '" font-size="24" font-weight="700" fill="' + c.dark + '">+</text>';
       x -= bw + opW;
     });
     const rw = 360, rh = Math.max(56, lines(res, rw, 17) * 26 + 14);
-    body += '<text x="300" y="' + (bh + 44) + '" text-anchor="middle" font-family="Arial" font-size="28" font-weight="700" fill="' + c.dark + '">=</text>';
+    body += '<text x="300" y="' + (bh + 44) + '" text-anchor="middle" font-family="' + FONT_ATTR + '" font-size="28" font-weight="700" fill="' + c.dark + '">=</text>';
     body += rect((W - rw) / 2, bh + 56, rw, rh, c.color, null, 16) + fo((W - rw) / 2, bh + 56, rw, rh, esc(res), { color: '#fff', fs: 17, weight: 800, align: 'center' });
     return svgWrap(bh + 64 + rh, body, c);
   }

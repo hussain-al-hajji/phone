@@ -306,7 +306,7 @@ Views.lab = {
     out += '<div id="labGroupZone">' + groupPickerHtml({ id: 'lab' }, { noMembers: true, note: 'الوقت محفوظ لكل مجموعة ويبقى صحيحًا حتى لو حدّث أي عضو الصفحة أو دخل من جهاز آخر.' }) + '</div>';
     if (g && Me.isReg()) {
       if (!t || !t.start) out += '<div class="lab-timer" style="margin-top:14px"><div class="grow"><div style="font-family:var(--f-display);font-weight:800;font-size:18px">جاهزون؟</div><div class="muted">لن تظهر صناديق الإجابة قبل بدء الوقت.</div></div><button class="btn btn-primary" data-act="lab-start">🚀 ابدأ الوقت</button></div>';
-      else out += '<div class="lab-timer" style="margin-top:14px"><div><div class="muted">الوقت المتبقي · ' + h(Groups.label(g)) + '</div><div class="clock" id="labClock">' + mmss(total - el) + '</div></div><span class="grow"></span>' +
+      else out += '<div class="lab-timer" style="margin-top:14px"><div><div class="muted">الوقت المتبقي · ' + h(Groups.label(g)) + '</div><div class="clock num" id="labClock">' + mmss(total - el) + '</div></div><span class="grow"></span>' +
         (t.pausedAt ? '<button class="btn btn-primary btn-sm" data-act="lab-resume">▶ استمرار</button>' : '<button class="btn btn-ghost btn-sm" data-act="lab-pause">⏸ إيقاف مؤقت</button>') + '<button class="btn btn-danger btn-sm" data-act="lab-reset">↺ إعادة ضبط</button></div>';
     }
     out += '<div id="labStages">' + Views.lab.stagesHtml() + '</div>';
