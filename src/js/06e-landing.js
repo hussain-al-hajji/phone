@@ -139,8 +139,8 @@ function loginFormHtml() {
   return '<div class="login-pop"><div class="lpop-head"><span class="lpop-ico">' + iconSvg('store', 24, '#fff', 2.1) + '</span><div><span class="sec-kicker">أهلًا بك في البرنامج التدريبي</span><h3>' + h(Content.site().heroTitle) + '</h3></div><button class="lpop-x" data-x aria-label="إغلاق">✕</button></div>' +
     '<p class="muted" style="margin-top:0">سجّل لتشارك في التقييمات والتمارين الحية وترى مشاركات زملائك لحظيًا، وتتابع إنجازك' + (Attend.on() ? ' وحضورك' : '') + (Attend.certOn() ? ' وشهادتك' : '') + '.</p>' +
     '<div class="reg-grid">' + RegFields.visible().map(f => RegFields.input(f, '', 'reg_')).join('') + '</div>' +
-    '<label class="consent"><input type="checkbox" id="regConsent"> <span>' + h(pv.consent) + ' — <a href="#" data-act="privacy-show">اقرأ إشعار الخصوصية</a></span></label>' +
-    '<label class="consent"><input type="checkbox" id="regFollow"> <span>' + h(pv.followup) + ' <span class="muted">(اختياري)</span></span></label>' +
+    (pv.showConsent ? '<label class="consent"><input type="checkbox" id="regConsent"> <span>' + h(pv.consent) + ' — <a href="#" data-act="privacy-show">اقرأ إشعار الخصوصية</a></span></label>' : '') +
+    (pv.showFollow ? '<label class="consent"><input type="checkbox" id="regFollow"> <span>' + h(pv.followup) + ' <span class="muted">(اختياري)</span></span></label>' : '') +
     '<button class="btn btn-primary btn-block" data-act="register">ابدأ 🚀</button>' +
     '<button class="btn btn-mint btn-block" style="margin-top:10px" data-act="member-login">مسجّل مسبقًا؟ الدخول برقم العضوية</button>' +
     '<div class="or-line">أو</div><button class="btn btn-ghost btn-block" data-act="guest">👀 تصفح كزائر (مشاهدة فقط)</button></div>';

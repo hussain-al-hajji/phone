@@ -2347,7 +2347,8 @@ const Content = {
       sec._hidden = Content.isHidden('home_' + k); return sec;
     }).filter(x => o.all || !x._hidden);
   },
-  privacy() { return Object.assign({}, DEFAULT_PRIVACY, (Store.site && Store.site.privacy) || {}); },
+  // showConsent / showFollow: إظهار خانتي الموافقة في نموذج التسجيل (يتحكم بهما المدرب)
+  privacy() { const p = Object.assign({ showConsent: true, showFollow: true }, DEFAULT_PRIVACY, (Store.site && Store.site.privacy) || {}); p.showConsent = p.showConsent !== false; p.showFollow = p.showFollow !== false && !!String(p.followup || '').trim(); return p; },
   pdf() { return Object.assign({}, DEFAULT_PDF, Store.site.pdf || {}); },
   courseTitle() { const el = document.getElementById('brandTitle'); return (el && el.textContent.trim()) || Content.site().headerTitle; },
   isHidden(id) { return Store.visibility && Store.visibility[id] === false; },
@@ -3672,7 +3673,7 @@ Views.account = {
     mark('overview', '📊', 'نظرة عامة', 'الإنجاز ' + pct + '%');
     const urec = Object.assign({}, Store.users[me.uid] || {}, { name: me.name, role: me.role }); const cons = urec.consent || {};
     out += '<div class="card pad" style="margin-top:16px"><h3 style="margin-bottom:12px">✏️ بياناتي</h3><div class="grid2">' + RegFields.visible().map(f => RegFields.input(f, RegFields.val(urec, f.key), 'acc_')).join('') + '</div>' +
-      '<label class="consent"><input type="checkbox" id="accFollow" ' + (cons.followup ? 'checked' : '') + '> <span>' + h(Content.privacy().followup) + '</span></label>' +
+      (Content.privacy().showFollow ? '<label class="consent"><input type="checkbox" id="accFollow" ' + (cons.followup ? 'checked' : '') + '> <span>' + h(Content.privacy().followup) + '</span></label>' : '') +
       '<div class="row"><button class="btn btn-primary btn-sm" data-act="acc-save">💾 حفظ التعديلات</button><button class="btn btn-ghost btn-sm" data-act="save-card">🪪 حفظ بطاقة رقم العضوية</button><span class="grow"></span><a href="#" class="btn btn-ghost btn-sm" data-act="privacy-show">🔒 إشعار الخصوصية</a><button class="btn btn-danger btn-sm" data-act="delete-me">🗑 احذف بياناتي</button></div></div>';
     mark('data', '✏️', 'بياناتي', 'البيانات والموافقات');
     out += '<section class="section"><div class="sec-head"><h2 class="sec-title">📝 مشاركاتي في التمارين</h2><span class="pill">راجع إجاباتك وافتح أي تمرين لتعديلها</span></div>' + myPostsHtml(me.uid) + '</section>';
@@ -4326,8 +4327,8 @@ function loginFormHtml() {
   return '<div class="login-pop"><div class="lpop-head"><span class="lpop-ico">' + iconSvg('store', 24, '#fff', 2.1) + '</span><div><span class="sec-kicker">أهلًا بك في البرنامج التدريبي</span><h3>' + h(Content.site().heroTitle) + '</h3></div><button class="lpop-x" data-x aria-label="إغلاق">✕</button></div>' +
     '<p class="muted" style="margin-top:0">سجّل لتشارك في التقييمات والتمارين الحية وترى مشاركات زملائك لحظيًا، وتتابع إنجازك' + (Attend.on() ? ' وحضورك' : '') + (Attend.certOn() ? ' وشهادتك' : '') + '.</p>' +
     '<div class="reg-grid">' + RegFields.visible().map(f => RegFields.input(f, '', 'reg_')).join('') + '</div>' +
-    '<label class="consent"><input type="checkbox" id="regConsent"> <span>' + h(pv.consent) + ' — <a href="#" data-act="privacy-show">اقرأ إشعار الخصوصية</a></span></label>' +
-    '<label class="consent"><input type="checkbox" id="regFollow"> <span>' + h(pv.followup) + ' <span class="muted">(اختياري)</span></span></label>' +
+    (pv.showConsent ? '<label class="consent"><input type="checkbox" id="regConsent"> <span>' + h(pv.consent) + ' — <a href="#" data-act="privacy-show">اقرأ إشعار الخصوصية</a></span></label>' : '') +
+    (pv.showFollow ? '<label class="consent"><input type="checkbox" id="regFollow"> <span>' + h(pv.followup) + ' <span class="muted">(اختياري)</span></span></label>' : '') +
     '<button class="btn btn-primary btn-block" data-act="register">ابدأ 🚀</button>' +
     '<button class="btn btn-mint btn-block" style="margin-top:10px" data-act="member-login">مسجّل مسبقًا؟ الدخول برقم العضوية</button>' +
     '<div class="or-line">أو</div><button class="btn btn-ghost btn-block" data-act="guest">👀 تصفح كزائر (مشاهدة فقط)</button></div>';
@@ -4563,8 +4564,10 @@ Views.admin = {
       '<div class="row" style="margin-top:8px"><button class="btn btn-soft btn-xs" data-act="rr-add">➕ إضافة حقل</button><button class="btn btn-primary btn-sm" data-act="rr-save">💾 حفظ نموذج التسجيل</button><button class="btn btn-ghost btn-sm" data-act="rr-reset">↺ الافتراضي</button></div>';
   },
   privacyEditor() {
-    const pv = Content.privacy();
-    return '<div class="field"><label>نص إشعار الخصوصية</label><textarea id="pvText" data-keep="pv-text" rows="7">' + h(pv.text) + '</textarea></div><div class="field"><label>نص خانة الموافقة الإلزامية</label><input id="pvConsent" data-keep="pv-consent" value="' + h(pv.consent) + '"></div><div class="field"><label>نص موافقة التواصل للمتابعة (اختيارية)</label><input id="pvFollow" data-keep="pv-follow" value="' + h(pv.followup) + '"></div><div class="row"><button class="btn btn-primary btn-sm" data-act="pv-save">💾 حفظ</button><button class="btn btn-ghost btn-sm" data-act="pv-reset">↺ الافتراضي</button></div>';
+    const pv = Content.privacy(); const raw = Object.assign({}, (Store.site && Store.site.privacy) || {});
+    const sw = (k, label) => { const on = raw[k] !== false; return '<button class="feat-sw' + (on ? ' on' : '') + '" data-act="pv-toggle" data-k="' + k + '" role="switch" aria-checked="' + on + '"><i></i><span>' + label + '</span></button>'; };
+    return '<div class="feat-sws">' + sw('showConsent', 'خانة الموافقة على إشعار الخصوصية') + sw('showFollow', 'خانة موافقة التواصل للمتابعة') + '</div><p class="help muted" style="font-family:var(--f-ui);font-size:12.5px;margin-top:0">عند إخفاء خانة الموافقة يتم التسجيل دون اشتراطها. رابط «إشعار الخصوصية» يبقى متاحًا في «حسابي».' + (raw.showFollow !== false && !String(pv.followup || '').trim() ? ' <b>نص موافقة المتابعة فارغ، لذلك لا تظهر خانتها.</b>' : '') + '</p>' +
+      '<div class="field"><label>نص إشعار الخصوصية</label><textarea id="pvText" data-keep="pv-text" rows="7">' + h(pv.text) + '</textarea></div><div class="field"><label>نص خانة الموافقة الإلزامية</label><input id="pvConsent" data-keep="pv-consent" value="' + h(pv.consent) + '"></div><div class="field"><label>نص موافقة التواصل للمتابعة (اختيارية)</label><input id="pvFollow" data-keep="pv-follow" value="' + h(pv.followup) + '"></div><div class="row"><button class="btn btn-primary btn-sm" data-act="pv-save">💾 حفظ</button><button class="btn btn-ghost btn-sm" data-act="pv-reset">↺ الافتراضي</button></div>';
   },
   guideEditor() {
     const g = Content.guide(); const dayTxt = d => d.map(x => [x.t, x.min, x.act, x.note].join(' | ')).join('\n');
@@ -5700,7 +5703,8 @@ function getByPath(path) { const seg = path.split('/'); let n = seg[0] === 'post
 async function doRegister() {
   const { data, err } = RegFields.collect(document, 'reg_');
   if (err) { UI.alert(err); return; }
-  if (!($('#regConsent') || {}).checked) { UI.alert('يلزم الموافقة على إشعار الخصوصية لإتمام التسجيل.'); return; }
+  const pv = Content.privacy();
+  if (pv.showConsent && !($('#regConsent') || {}).checked) { UI.alert('يلزم الموافقة على إشعار الخصوصية لإتمام التسجيل.'); return; }
   const follow = !!($('#regFollow') || {}).checked;
   const btn = $('[data-act="register"]'); if (btn) { btn.disabled = true; btn.textContent = 'جارٍ التسجيل…'; }
   try {
@@ -5712,7 +5716,7 @@ async function doRegister() {
     const ts = DB.now(); const name = data.name, role = data.role || '';
     // 3) الملف العام (الاسم فقط) + البيانات الخاصة (الحقول والموافقة) + رمز الدخول الشخصي
     await DB.set('users/' + uid, { name, role, member, ts });
-    await DB.set('private/' + uid, { f: data.f || {}, consent: { privacy: ts, followup: follow } });
+    await DB.set('private/' + uid, { f: data.f || {}, consent: { privacy: pv.showConsent ? ts : 0, followup: follow } });
     await DB.set('secrets/' + uid, code);
     DB.transaction('stats/registered', c => (Number(c) || 0) + 1);
     const me = { uid, name, role, member, ts, code }; Me.save(me); syncWatchers();
@@ -5908,7 +5912,7 @@ document.addEventListener('click', async ev => {
     case 'lab-save': { const i = t.getAttribute('data-i'); const ta = $('#labAns' + i); const txt = ta ? ta.value.trim() : ''; if (!txt) { UI.alert('اكتبوا مخرج المرحلة أولًا.'); break; } await DB.update('lab/answers/g' + Me.group() + '/s' + i, { text: txt, name: Me.data.name, uid: Me.uid(), ts: DB.now() }); UIState.editing['lab' + i] = false; if (ta) ta.value = ''; UI.toast('✅ حُفظت المرحلة'); App.render(); break; }
     case 'del-lab': { if (await UI.confirm('حذف إجابة هذه المرحلة؟', { danger: true, ok: 'حذف' })) DB.remove('lab/answers/' + t.getAttribute('data-k') + '/s' + t.getAttribute('data-i')); break; }
     // ----- حسابي -----
-    case 'acc-save': { const { data, err } = RegFields.collect(document, 'acc_'); if (err) { UI.alert(err); break; } const me = Object.assign({}, Me.data, { name: data.name || Me.data.name, role: data.role != null ? data.role : Me.data.role }); Me.save(me); await DB.update('users/' + me.uid, { name: me.name, role: me.role || '' }); await DB.update('private/' + me.uid, { f: Object.assign({}, (Store.users[me.uid] || {}).f || {}, data.f), 'consent/followup': !!($('#accFollow') || {}).checked }); UI.toast('✅ تم تحديث بياناتك'); App.render(); break; }
+    case 'acc-save': { const { data, err } = RegFields.collect(document, 'acc_'); if (err) { UI.alert(err); break; } const me = Object.assign({}, Me.data, { name: data.name || Me.data.name, role: data.role != null ? data.role : Me.data.role }); Me.save(me); await DB.update('users/' + me.uid, { name: me.name, role: me.role || '' }); await DB.update('private/' + me.uid, Object.assign({ f: Object.assign({}, (Store.users[me.uid] || {}).f || {}, data.f) }, $('#accFollow') ? { 'consent/followup': $('#accFollow').checked } : {})); UI.toast('✅ تم تحديث بياناتك'); App.render(); break; }
     case 'privacy-show': ev.preventDefault(); privacyModal(); break;
     case 'rr-move': case 'rr-del': case 'rr-add': {
       const fs = collectRegRows(); if (act === 'rr-add') fs.push({ key: 'c' + genId(), label: 'حقل جديد', type: 'text', visible: true, required: false, options: [], builtin: false });
@@ -5917,7 +5921,8 @@ document.addEventListener('click', async ev => {
     }
     case 'rr-save': { const fs = collectRegRows(); const fields = {}; fs.forEach(f => { fields[f.key] = { label: f.label, type: f.type, visible: !!f.visible, required: !!f.required, options: f.options, ph: f.ph || '' }; }); const cur = ((Store.site || {}).regFields || {}).fields || {}; Object.keys(cur).forEach(k => { if (!fields[k] && !REG_DEFAULTS[k]) fields[k] = Object.assign({}, cur[k], { deleted: true }); }); await DB.set('site/regFields', { order: fs.map(f => f.key), fields }); UIState.regDraft = null; UI.toast('✅ حُفظ نموذج التسجيل'); break; }
     case 'rr-reset': { if (await UI.confirm('استرجاع حقول التسجيل الافتراضية؟', { ok: 'استرجاع' })) { await DB.remove('site/regFields'); UIState.regDraft = null; App.render(); } break; }
-    case 'pv-save': await DB.set('site/privacy', { text: $('#pvText').value.trim(), consent: $('#pvConsent').value.trim(), followup: $('#pvFollow').value.trim() }); UI.toast('✅ حُفظ'); break;
+    case 'pv-save': await DB.update('site/privacy', { text: $('#pvText').value.trim(), consent: $('#pvConsent').value.trim(), followup: $('#pvFollow').value.trim() }); UI.toast('✅ حُفظ'); break;
+    case 'pv-toggle': { const k = t.getAttribute('data-k'); const cur = Content.privacy()[k] !== false; await DB.update('site/privacy', { [k]: !cur }); UI.toast(!cur ? '✅ ستظهر الخانة في نموذج التسجيل' : '⏸ أُخفيت الخانة من نموذج التسجيل'); break; }
     case 'pv-reset': { if (await UI.confirm('استرجاع النص الافتراضي؟', { ok: 'استرجاع' })) DB.remove('site/privacy'); break; }
     case 'users-csv': exportUsersCsv(); break;
     case 'bk-now': { const ok = await autoBackup(true); UI.toast(ok ? '✅ أُخذت نسخة احتياطية الآن' : 'تعذر أخذ النسخة'); break; }

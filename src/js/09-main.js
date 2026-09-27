@@ -113,7 +113,8 @@ function getByPath(path) { const seg = path.split('/'); let n = seg[0] === 'post
 async function doRegister() {
   const { data, err } = RegFields.collect(document, 'reg_');
   if (err) { UI.alert(err); return; }
-  if (!($('#regConsent') || {}).checked) { UI.alert('يلزم الموافقة على إشعار الخصوصية لإتمام التسجيل.'); return; }
+  const pv = Content.privacy();
+  if (pv.showConsent && !($('#regConsent') || {}).checked) { UI.alert('يلزم الموافقة على إشعار الخصوصية لإتمام التسجيل.'); return; }
   const follow = !!($('#regFollow') || {}).checked;
   const btn = $('[data-act="register"]'); if (btn) { btn.disabled = true; btn.textContent = 'جارٍ التسجيل…'; }
   try {
@@ -125,7 +126,7 @@ async function doRegister() {
     const ts = DB.now(); const name = data.name, role = data.role || '';
     // 3) الملف العام (الاسم فقط) + البيانات الخاصة (الحقول والموافقة) + رمز الدخول الشخصي
     await DB.set('users/' + uid, { name, role, member, ts });
-    await DB.set('private/' + uid, { f: data.f || {}, consent: { privacy: ts, followup: follow } });
+    await DB.set('private/' + uid, { f: data.f || {}, consent: { privacy: pv.showConsent ? ts : 0, followup: follow } });
     await DB.set('secrets/' + uid, code);
     DB.transaction('stats/registered', c => (Number(c) || 0) + 1);
     const me = { uid, name, role, member, ts, code }; Me.save(me); syncWatchers();
@@ -321,7 +322,7 @@ document.addEventListener('click', async ev => {
     case 'lab-save': { const i = t.getAttribute('data-i'); const ta = $('#labAns' + i); const txt = ta ? ta.value.trim() : ''; if (!txt) { UI.alert('اكتبوا مخرج المرحلة أولًا.'); break; } await DB.update('lab/answers/g' + Me.group() + '/s' + i, { text: txt, name: Me.data.name, uid: Me.uid(), ts: DB.now() }); UIState.editing['lab' + i] = false; if (ta) ta.value = ''; UI.toast('✅ حُفظت المرحلة'); App.render(); break; }
     case 'del-lab': { if (await UI.confirm('حذف إجابة هذه المرحلة؟', { danger: true, ok: 'حذف' })) DB.remove('lab/answers/' + t.getAttribute('data-k') + '/s' + t.getAttribute('data-i')); break; }
     // ----- حسابي -----
-    case 'acc-save': { const { data, err } = RegFields.collect(document, 'acc_'); if (err) { UI.alert(err); break; } const me = Object.assign({}, Me.data, { name: data.name || Me.data.name, role: data.role != null ? data.role : Me.data.role }); Me.save(me); await DB.update('users/' + me.uid, { name: me.name, role: me.role || '' }); await DB.update('private/' + me.uid, { f: Object.assign({}, (Store.users[me.uid] || {}).f || {}, data.f), 'consent/followup': !!($('#accFollow') || {}).checked }); UI.toast('✅ تم تحديث بياناتك'); App.render(); break; }
+    case 'acc-save': { const { data, err } = RegFields.collect(document, 'acc_'); if (err) { UI.alert(err); break; } const me = Object.assign({}, Me.data, { name: data.name || Me.data.name, role: data.role != null ? data.role : Me.data.role }); Me.save(me); await DB.update('users/' + me.uid, { name: me.name, role: me.role || '' }); await DB.update('private/' + me.uid, Object.assign({ f: Object.assign({}, (Store.users[me.uid] || {}).f || {}, data.f) }, $('#accFollow') ? { 'consent/followup': $('#accFollow').checked } : {})); UI.toast('✅ تم تحديث بياناتك'); App.render(); break; }
     case 'privacy-show': ev.preventDefault(); privacyModal(); break;
     case 'rr-move': case 'rr-del': case 'rr-add': {
       const fs = collectRegRows(); if (act === 'rr-add') fs.push({ key: 'c' + genId(), label: 'حقل جديد', type: 'text', visible: true, required: false, options: [], builtin: false });
@@ -330,7 +331,8 @@ document.addEventListener('click', async ev => {
     }
     case 'rr-save': { const fs = collectRegRows(); const fields = {}; fs.forEach(f => { fields[f.key] = { label: f.label, type: f.type, visible: !!f.visible, required: !!f.required, options: f.options, ph: f.ph || '' }; }); const cur = ((Store.site || {}).regFields || {}).fields || {}; Object.keys(cur).forEach(k => { if (!fields[k] && !REG_DEFAULTS[k]) fields[k] = Object.assign({}, cur[k], { deleted: true }); }); await DB.set('site/regFields', { order: fs.map(f => f.key), fields }); UIState.regDraft = null; UI.toast('✅ حُفظ نموذج التسجيل'); break; }
     case 'rr-reset': { if (await UI.confirm('استرجاع حقول التسجيل الافتراضية؟', { ok: 'استرجاع' })) { await DB.remove('site/regFields'); UIState.regDraft = null; App.render(); } break; }
-    case 'pv-save': await DB.set('site/privacy', { text: $('#pvText').value.trim(), consent: $('#pvConsent').value.trim(), followup: $('#pvFollow').value.trim() }); UI.toast('✅ حُفظ'); break;
+    case 'pv-save': await DB.update('site/privacy', { text: $('#pvText').value.trim(), consent: $('#pvConsent').value.trim(), followup: $('#pvFollow').value.trim() }); UI.toast('✅ حُفظ'); break;
+    case 'pv-toggle': { const k = t.getAttribute('data-k'); const cur = Content.privacy()[k] !== false; await DB.update('site/privacy', { [k]: !cur }); UI.toast(!cur ? '✅ ستظهر الخانة في نموذج التسجيل' : '⏸ أُخفيت الخانة من نموذج التسجيل'); break; }
     case 'pv-reset': { if (await UI.confirm('استرجاع النص الافتراضي؟', { ok: 'استرجاع' })) DB.remove('site/privacy'); break; }
     case 'users-csv': exportUsersCsv(); break;
     case 'bk-now': { const ok = await autoBackup(true); UI.toast(ok ? '✅ أُخذت نسخة احتياطية الآن' : 'تعذر أخذ النسخة'); break; }

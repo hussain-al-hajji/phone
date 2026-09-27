@@ -608,7 +608,7 @@ Views.account = {
     mark('overview', '📊', 'نظرة عامة', 'الإنجاز ' + pct + '%');
     const urec = Object.assign({}, Store.users[me.uid] || {}, { name: me.name, role: me.role }); const cons = urec.consent || {};
     out += '<div class="card pad" style="margin-top:16px"><h3 style="margin-bottom:12px">✏️ بياناتي</h3><div class="grid2">' + RegFields.visible().map(f => RegFields.input(f, RegFields.val(urec, f.key), 'acc_')).join('') + '</div>' +
-      '<label class="consent"><input type="checkbox" id="accFollow" ' + (cons.followup ? 'checked' : '') + '> <span>' + h(Content.privacy().followup) + '</span></label>' +
+      (Content.privacy().showFollow ? '<label class="consent"><input type="checkbox" id="accFollow" ' + (cons.followup ? 'checked' : '') + '> <span>' + h(Content.privacy().followup) + '</span></label>' : '') +
       '<div class="row"><button class="btn btn-primary btn-sm" data-act="acc-save">💾 حفظ التعديلات</button><button class="btn btn-ghost btn-sm" data-act="save-card">🪪 حفظ بطاقة رقم العضوية</button><span class="grow"></span><a href="#" class="btn btn-ghost btn-sm" data-act="privacy-show">🔒 إشعار الخصوصية</a><button class="btn btn-danger btn-sm" data-act="delete-me">🗑 احذف بياناتي</button></div></div>';
     mark('data', '✏️', 'بياناتي', 'البيانات والموافقات');
     out += '<section class="section"><div class="sec-head"><h2 class="sec-title">📝 مشاركاتي في التمارين</h2><span class="pill">راجع إجاباتك وافتح أي تمرين لتعديلها</span></div>' + myPostsHtml(me.uid) + '</section>';

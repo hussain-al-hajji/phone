@@ -209,8 +209,10 @@ Views.admin = {
       '<div class="row" style="margin-top:8px"><button class="btn btn-soft btn-xs" data-act="rr-add">➕ إضافة حقل</button><button class="btn btn-primary btn-sm" data-act="rr-save">💾 حفظ نموذج التسجيل</button><button class="btn btn-ghost btn-sm" data-act="rr-reset">↺ الافتراضي</button></div>';
   },
   privacyEditor() {
-    const pv = Content.privacy();
-    return '<div class="field"><label>نص إشعار الخصوصية</label><textarea id="pvText" data-keep="pv-text" rows="7">' + h(pv.text) + '</textarea></div><div class="field"><label>نص خانة الموافقة الإلزامية</label><input id="pvConsent" data-keep="pv-consent" value="' + h(pv.consent) + '"></div><div class="field"><label>نص موافقة التواصل للمتابعة (اختيارية)</label><input id="pvFollow" data-keep="pv-follow" value="' + h(pv.followup) + '"></div><div class="row"><button class="btn btn-primary btn-sm" data-act="pv-save">💾 حفظ</button><button class="btn btn-ghost btn-sm" data-act="pv-reset">↺ الافتراضي</button></div>';
+    const pv = Content.privacy(); const raw = Object.assign({}, (Store.site && Store.site.privacy) || {});
+    const sw = (k, label) => { const on = raw[k] !== false; return '<button class="feat-sw' + (on ? ' on' : '') + '" data-act="pv-toggle" data-k="' + k + '" role="switch" aria-checked="' + on + '"><i></i><span>' + label + '</span></button>'; };
+    return '<div class="feat-sws">' + sw('showConsent', 'خانة الموافقة على إشعار الخصوصية') + sw('showFollow', 'خانة موافقة التواصل للمتابعة') + '</div><p class="help muted" style="font-family:var(--f-ui);font-size:12.5px;margin-top:0">عند إخفاء خانة الموافقة يتم التسجيل دون اشتراطها. رابط «إشعار الخصوصية» يبقى متاحًا في «حسابي».' + (raw.showFollow !== false && !String(pv.followup || '').trim() ? ' <b>نص موافقة المتابعة فارغ، لذلك لا تظهر خانتها.</b>' : '') + '</p>' +
+      '<div class="field"><label>نص إشعار الخصوصية</label><textarea id="pvText" data-keep="pv-text" rows="7">' + h(pv.text) + '</textarea></div><div class="field"><label>نص خانة الموافقة الإلزامية</label><input id="pvConsent" data-keep="pv-consent" value="' + h(pv.consent) + '"></div><div class="field"><label>نص موافقة التواصل للمتابعة (اختيارية)</label><input id="pvFollow" data-keep="pv-follow" value="' + h(pv.followup) + '"></div><div class="row"><button class="btn btn-primary btn-sm" data-act="pv-save">💾 حفظ</button><button class="btn btn-ghost btn-sm" data-act="pv-reset">↺ الافتراضي</button></div>';
   },
   guideEditor() {
     const g = Content.guide(); const dayTxt = d => d.map(x => [x.t, x.min, x.act, x.note].join(' | ')).join('\n');

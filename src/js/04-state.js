@@ -83,7 +83,8 @@ const Content = {
       sec._hidden = Content.isHidden('home_' + k); return sec;
     }).filter(x => o.all || !x._hidden);
   },
-  privacy() { return Object.assign({}, DEFAULT_PRIVACY, (Store.site && Store.site.privacy) || {}); },
+  // showConsent / showFollow: إظهار خانتي الموافقة في نموذج التسجيل (يتحكم بهما المدرب)
+  privacy() { const p = Object.assign({ showConsent: true, showFollow: true }, DEFAULT_PRIVACY, (Store.site && Store.site.privacy) || {}); p.showConsent = p.showConsent !== false; p.showFollow = p.showFollow !== false && !!String(p.followup || '').trim(); return p; },
   pdf() { return Object.assign({}, DEFAULT_PDF, Store.site.pdf || {}); },
   courseTitle() { const el = document.getElementById('brandTitle'); return (el && el.textContent.trim()) || Content.site().headerTitle; },
   isHidden(id) { return Store.visibility && Store.visibility[id] === false; },
