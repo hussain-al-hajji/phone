@@ -43,7 +43,7 @@ function applyFilter(inp) { const q = inp.value.trim().toLowerCase(); const scop
 // ---------- المراقبات الحية ----------
 // كل زائر يراقب العقد العامة فقط، وسجلاته الخاصة (عقد المتدرب نفسه)، والمدرب وحده يراقب العقد الخاصة كاملة.
 // الجاهزية: لا تُعرض الواجهة ولا تُقبل الكتابة قبل أول قراءة مؤكدة لكل العقد العامة.
-const Watch = { active: {}, publicPaths: [], seen: new Set() };
+const Watch = { active: {}, publicPaths: [], seen: new Set(), denied: {} };
 function mergeUsers() { // الملف العام (users) + البيانات الخاصة (private) = سجل كامل للواجهة
   const pub = Store.usersPub || {}; const pr = Store.priv || {}; const out = {};
   Object.keys(pub).forEach(u => { out[u] = Object.assign({}, pub[u], pr[u] ? { f: Object.assign({}, pub[u].f || {}, pr[u].f || {}), consent: pr[u].consent || pub[u].consent } : {}); });
@@ -109,8 +109,8 @@ function syncWatchers() {
     Watch.active[path] = DB.watch(path, v => {
       defs[path](v);
       if (!Watch.seen.has(path)) { Watch.seen.add(path); if (!App.dataReady && Watch.publicPaths.every(x => Watch.seen.has(x))) { App.dataReady = true; DB.markReady(); App.render(); } }
-      App.onData();
-    }, e => { console.warn('watch denied', path, e); if (Watch.publicPaths.indexOf(path) > -1) { App.watchError = e; App.render(); } });
+      Watch.denied[path] = false; App.onData();
+    }, e => { console.warn('watch denied', path, e); Watch.denied[path] = true; if (Watch.publicPaths.indexOf(path) > -1) { App.watchError = e; App.render(); } });
   });
 }
 function watchAll() { syncWatchers(); }
@@ -287,6 +287,7 @@ document.addEventListener('click', async ev => {
     case 'guest-login': Presence.leave(); Me.clear(); syncWatchers(); Router.go('home'); window.scrollTo(0, 0); break;
     case 'open-login': LoginModal.open(); break;
     case 'presence-show': Presence.show(exId); break;
+    case 'presence-rules': UI.alert(Presence.rulesHint({ code: 'permission' }), 'نشر قواعد Firebase'); break;
     case 'invite-send': Invite.send(id); break;
     case 'invite-cancel': Invite.cancel(); break;
     case 'lp-enter': Router.go('home'); window.scrollTo(0, 0); break;

@@ -30,10 +30,14 @@ const Presence = {
   },
   // إعادة التسجيل بعد عودة الاتصال (الخادم يحذف السجل عند الانقطاع)
   resync() { if (Presence.cur) DB.presence(Presence.path(), Presence.payload()).catch(() => {}); },
+  // تفسير رفض قاعدة البيانات: الغالب أن قواعد Firebase المنشورة لا تحوي العقد الجديدة (presence / invite / removed)
+  rulesHint(err) { return /permission/i.test(String((err && (err.code || err.message)) || '')) ? 'رفضت قاعدة البيانات الكتابة لأن <b>قواعد الأمان المنشورة في Firebase قديمة</b> ولا تحتوي العقد الجديدة (<span class="num" dir="ltr">presence</span> و<span class="num" dir="ltr">invite</span> و<span class="num" dir="ltr">removed</span>).<br><br>الحل: افتح Firebase Console ← Realtime Database ← <b>Rules</b>، والصق محتوى ملف <span class="num" dir="ltr">database.rules.json</span> المحدّث من المستودع، ثم اضغط <b>Publish</b>.' : 'تعذّر الحفظ: ' + h((err && err.message) || err); },
+  denied() { return !!(Watch.denied && Watch.denied['presence']); },
   list(ex) { const pr = (Store.presence || {})[ex] || {}; const now = DB.now(); return Object.keys(pr).map(k => pr[k]).filter(p => p && typeof p === 'object' && now - (+p.ts || 0) < PRESENCE_STALE); },
   counts(ex) { const l = Presence.list(ex); const names = []; const seen = {}; let guests = 0; l.forEach(p => { if (p.g || !p.u) guests++; else if (!seen[p.u]) { seen[p.u] = 1; names.push(p.n || 'متدرب'); } }); return { total: names.length + guests, names, guests }; },
   chip(ex) {
     if (!Admin.ok()) return ''; const c = Presence.counts(ex);
+    if (Presence.denied()) return '<button class="live-chip warn" data-act="presence-rules" title="قواعد Firebase المنشورة قديمة">⚠️ العداد معطّل — انشر قواعد Firebase المحدّثة</button>';
     return '<button class="live-chip ' + (c.total ? 'on' : '') + '" data-act="presence-show" data-ex="' + h(ex) + '" title="من على صفحة هذا التمرين الآن"><span class="live-dot"></span><b class="num">' + c.total + '</b><span>على الصفحة الآن</span></button>';
   },
   show(ex) {
@@ -56,10 +60,11 @@ const Invite = {
   },
   async send(exId) {
     const e = Content.ex(exId); if (!e) return;
-    await DB.set('invite', { id: genId('i'), ex: exId, title: String(e.title || '').slice(0, 200), ts: DB.now() });
+    try { await DB.set('invite', { id: genId('i'), ex: exId, title: String(e.title || '').slice(0, 200), ts: DB.now() }, { quiet: true }); }
+    catch (err) { UI.alert(Presence.rulesHint(err), 'تعذّر إرسال الدعوة'); return; }
     UI.toast('📣 أُرسلت الدعوة إلى «' + e.title + '»');
   },
-  async cancel() { await DB.remove('invite'); UI.toast('أُلغيت الدعوة'); },
+  async cancel() { try { await DB.remove('invite', { quiet: true }); UI.toast('أُلغيت الدعوة'); } catch (err) { UI.alert(Presence.rulesHint(err), 'تعذّر إلغاء الدعوة'); } },
   close() { if (Invite.m) { const m = Invite.m; Invite.m = null; m.close(); } },
   seen(id) { SafeLS.set('ec_inv_seen', id); },
   check() {

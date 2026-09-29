@@ -1447,6 +1447,7 @@ html[data-theme="dark"] .banner-offline{background:#3B2A10;color:#FFD98A;border-
 .live-chip b{font-family:var(--f-ui);font-size:14px;color:var(--ink-2)}
 .live-chip .live-dot{background:#9AA3B2;animation:none}.live-chip.on{border-color:var(--ok);background:var(--ok-bg);color:#10573A}.live-chip.on b{color:#10573A}.live-chip.on .live-dot{background:var(--ok);animation:pulse 1.6s infinite}
 .invite-title{font-family:var(--f-display);font-weight:800;font-size:20px;margin:6px 0 2px}
+.live-chip.warn{border-color:#FAB20B;background:#FFF7E6;color:#8A5A00}
 
 </style>
 </head>
@@ -4969,10 +4970,14 @@ const Presence = {
   },
   // إعادة التسجيل بعد عودة الاتصال (الخادم يحذف السجل عند الانقطاع)
   resync() { if (Presence.cur) DB.presence(Presence.path(), Presence.payload()).catch(() => {}); },
+  // تفسير رفض قاعدة البيانات: الغالب أن قواعد Firebase المنشورة لا تحوي العقد الجديدة (presence / invite / removed)
+  rulesHint(err) { return /permission/i.test(String((err && (err.code || err.message)) || '')) ? 'رفضت قاعدة البيانات الكتابة لأن <b>قواعد الأمان المنشورة في Firebase قديمة</b> ولا تحتوي العقد الجديدة (<span class="num" dir="ltr">presence</span> و<span class="num" dir="ltr">invite</span> و<span class="num" dir="ltr">removed</span>).<br><br>الحل: افتح Firebase Console ← Realtime Database ← <b>Rules</b>، والصق محتوى ملف <span class="num" dir="ltr">database.rules.json</span> المحدّث من المستودع، ثم اضغط <b>Publish</b>.' : 'تعذّر الحفظ: ' + h((err && err.message) || err); },
+  denied() { return !!(Watch.denied && Watch.denied['presence']); },
   list(ex) { const pr = (Store.presence || {})[ex] || {}; const now = DB.now(); return Object.keys(pr).map(k => pr[k]).filter(p => p && typeof p === 'object' && now - (+p.ts || 0) < PRESENCE_STALE); },
   counts(ex) { const l = Presence.list(ex); const names = []; const seen = {}; let guests = 0; l.forEach(p => { if (p.g || !p.u) guests++; else if (!seen[p.u]) { seen[p.u] = 1; names.push(p.n || 'متدرب'); } }); return { total: names.length + guests, names, guests }; },
   chip(ex) {
     if (!Admin.ok()) return ''; const c = Presence.counts(ex);
+    if (Presence.denied()) return '<button class="live-chip warn" data-act="presence-rules" title="قواعد Firebase المنشورة قديمة">⚠️ العداد معطّل — انشر قواعد Firebase المحدّثة</button>';
     return '<button class="live-chip ' + (c.total ? 'on' : '') + '" data-act="presence-show" data-ex="' + h(ex) + '" title="من على صفحة هذا التمرين الآن"><span class="live-dot"></span><b class="num">' + c.total + '</b><span>على الصفحة الآن</span></button>';
   },
   show(ex) {
@@ -4995,10 +5000,11 @@ const Invite = {
   },
   async send(exId) {
     const e = Content.ex(exId); if (!e) return;
-    await DB.set('invite', { id: genId('i'), ex: exId, title: String(e.title || '').slice(0, 200), ts: DB.now() });
+    try { await DB.set('invite', { id: genId('i'), ex: exId, title: String(e.title || '').slice(0, 200), ts: DB.now() }, { quiet: true }); }
+    catch (err) { UI.alert(Presence.rulesHint(err), 'تعذّر إرسال الدعوة'); return; }
     UI.toast('📣 أُرسلت الدعوة إلى «' + e.title + '»');
   },
-  async cancel() { await DB.remove('invite'); UI.toast('أُلغيت الدعوة'); },
+  async cancel() { try { await DB.remove('invite', { quiet: true }); UI.toast('أُلغيت الدعوة'); } catch (err) { UI.alert(Presence.rulesHint(err), 'تعذّر إلغاء الدعوة'); } },
   close() { if (Invite.m) { const m = Invite.m; Invite.m = null; m.close(); } },
   seen(id) { SafeLS.set('ec_inv_seen', id); },
   check() {
@@ -6302,7 +6308,7 @@ function applyFilter(inp) { const q = inp.value.trim().toLowerCase(); const scop
 // ---------- المراقبات الحية ----------
 // كل زائر يراقب العقد العامة فقط، وسجلاته الخاصة (عقد المتدرب نفسه)، والمدرب وحده يراقب العقد الخاصة كاملة.
 // الجاهزية: لا تُعرض الواجهة ولا تُقبل الكتابة قبل أول قراءة مؤكدة لكل العقد العامة.
-const Watch = { active: {}, publicPaths: [], seen: new Set() };
+const Watch = { active: {}, publicPaths: [], seen: new Set(), denied: {} };
 function mergeUsers() { // الملف العام (users) + البيانات الخاصة (private) = سجل كامل للواجهة
   const pub = Store.usersPub || {}; const pr = Store.priv || {}; const out = {};
   Object.keys(pub).forEach(u => { out[u] = Object.assign({}, pub[u], pr[u] ? { f: Object.assign({}, pub[u].f || {}, pr[u].f || {}), consent: pr[u].consent || pub[u].consent } : {}); });
@@ -6368,8 +6374,8 @@ function syncWatchers() {
     Watch.active[path] = DB.watch(path, v => {
       defs[path](v);
       if (!Watch.seen.has(path)) { Watch.seen.add(path); if (!App.dataReady && Watch.publicPaths.every(x => Watch.seen.has(x))) { App.dataReady = true; DB.markReady(); App.render(); } }
-      App.onData();
-    }, e => { console.warn('watch denied', path, e); if (Watch.publicPaths.indexOf(path) > -1) { App.watchError = e; App.render(); } });
+      Watch.denied[path] = false; App.onData();
+    }, e => { console.warn('watch denied', path, e); Watch.denied[path] = true; if (Watch.publicPaths.indexOf(path) > -1) { App.watchError = e; App.render(); } });
   });
 }
 function watchAll() { syncWatchers(); }
@@ -6546,6 +6552,7 @@ document.addEventListener('click', async ev => {
     case 'guest-login': Presence.leave(); Me.clear(); syncWatchers(); Router.go('home'); window.scrollTo(0, 0); break;
     case 'open-login': LoginModal.open(); break;
     case 'presence-show': Presence.show(exId); break;
+    case 'presence-rules': UI.alert(Presence.rulesHint({ code: 'permission' }), 'نشر قواعد Firebase'); break;
     case 'invite-send': Invite.send(id); break;
     case 'invite-cancel': Invite.cancel(); break;
     case 'lp-enter': Router.go('home'); window.scrollTo(0, 0); break;
