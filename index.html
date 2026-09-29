@@ -1449,6 +1449,58 @@ html[data-theme="dark"] .banner-offline{background:#3B2A10;color:#FFD98A;border-
 .invite-title{font-family:var(--f-display);font-weight:800;font-size:20px;margin:6px 0 2px}
 .live-chip.warn{border-color:#FAB20B;background:#FFF7E6;color:#8A5A00}
 
+/* ===== إصلاح الوضع الليلي: قراءة واضحة لكل الصناديق والأزرار والألوان ===== */
+html[data-theme="dark"]{--ac-text-mix:#fff}
+/* صناديق التمرين: كانت بخلفيات فاتحة ثابتة مع نص فاتح */
+html[data-theme="dark"] .ex-block.scenario{background:linear-gradient(135deg,#2A2418,#221E18);border-color:#4A4020;color:var(--ink)}
+html[data-theme="dark"] .ex-block.hint{background:#2B2616;border-color:#4A4020;color:var(--ink)}
+html[data-theme="dark"] .ex-block.extract{background:color-mix(in srgb,var(--ac,#33B5C8) 16%,var(--surface));color:var(--ink)}
+html[data-theme="dark"] .ex-block.scenario p,html[data-theme="dark"] .ex-block.hint p,html[data-theme="dark"] .ex-block.scenario li,html[data-theme="dark"] .ex-block.hint li,html[data-theme="dark"] .ex-block.extract li{color:var(--ink)}
+html[data-theme="dark"] .ex-block.scenario .lbl,html[data-theme="dark"] .ex-block.hint .lbl,html[data-theme="dark"] .ex-block.extract .lbl{color:#FFD98A}
+html[data-theme="dark"] .ex-head .ico,html[data-theme="dark"] .q-card .qn{background:var(--acg,#222837);color:var(--ink)}
+html[data-theme="dark"] .act-ico{background:linear-gradient(135deg,#3A3018,#33261A)}
+html[data-theme="dark"] .locked-note{background:var(--surface-2);color:var(--ink-2)}
+/* أزرار وشارات */
+html[data-theme="dark"] .btn-dark,html[data-theme="dark"] .deck-arrow{background:#3B4677;color:#fff}
+html[data-theme="dark"] .btn-dark:hover,html[data-theme="dark"] .deck-arrow:hover{background:#4A5690}
+html[data-theme="dark"] .btn-soft{background:rgba(51,181,200,.18);color:#8EE0EE}
+html[data-theme="dark"] .btn-soft:hover{background:rgba(51,181,200,.28)}
+html[data-theme="dark"] .btn-ghost{color:var(--ink);border-color:#465072}
+html[data-theme="dark"] .btn-ghost:hover{border-color:var(--brand)}
+html[data-theme="dark"] .pill{background:var(--surface-2);color:var(--ink-2);border:1px solid var(--line)}
+html[data-theme="dark"] .hn-item.active .hn-count{background:#8EE0EE;color:#0B1A20}
+html[data-theme="dark"] .hn-item.active .hn-ico{color:#fff}
+html[data-theme="dark"] .cmp-opt b,html[data-theme="dark"] .q-card .qn{color:var(--ink-2)}
+html[data-theme="dark"] .blank{background:var(--surface-2);color:#8EE0EE;border-color:#3F8593}
+html[data-theme="dark"] .chip{background:var(--surface-2);color:var(--ink);border-color:#3F8593}
+html[data-theme="dark"] .muted,html[data-theme="dark"] .status-note{color:var(--ink-2)}
+/* نصوص ملوّنة بلون المحور: نفتحها ليقرأها العين على الخلفية الداكنة */
+html[data-theme="dark"] .slide-no,html[data-theme="dark"] .sec-kicker,html[data-theme="dark"] .rule-box .lbl,html[data-theme="dark"] .gauge b,html[data-theme="dark"] .kpi-grid b,html[data-theme="dark"] .st,html[data-theme="dark"] .poll-pct{color:color-mix(in srgb,var(--ac,var(--brand)) 45%,#fff)}
+html[data-theme="dark"] .kpi-grid b.neg,html[data-theme="dark"] .num.neg,html[data-theme="dark"] b.neg{color:#FF9A9E}
+html[data-theme="dark"] .gauge b{color:var(--ink)}
+html[data-theme="dark"] .sim-factors li.up span{background:#123B2A;color:#8DF0BE}
+html[data-theme="dark"] .sim-factors li.down span{background:#3D1B21;color:#FFA3A8}
+html[data-theme="dark"] .thought{background:#3D1B21;color:#FFB3B7}
+html[data-theme="dark"] .thought.ok{background:#123B2A;color:#8DF0BE}
+html[data-theme="dark"] .co-pop{background:#fff;color:#1C2340}
+html[data-theme="dark"] .co-block.warn{background:#3D1B21;color:#FFB3B7;border-color:#6B2A32}
+html[data-theme="dark"] .sim-seg label.on,html[data-theme="dark"] .pm,html[data-theme="dark"] .points li .n,html[data-theme="dark"] .steps-list .n{color:#fff}
+html[data-theme="dark"] .live-chip.on,html[data-theme="dark"] .live-chip.on b{color:#8DF0BE}
+html[data-theme="dark"] .live-chip.warn{background:#2B2616;color:#FFD98A;border-color:#4A4020}
+html[data-theme="dark"] .fix-card:has(input:checked){background:rgba(51,181,200,.16)}
+html[data-theme="dark"] .hs:has(input:checked){background:#3D1B21}
+html[data-theme="dark"] .hs.ok,html[data-theme="dark"] .hs.ok:has(input:checked){background:#123B2A}
+html[data-theme="dark"] .hs.bad,html[data-theme="dark"] .hs.bad:has(input:checked){background:#2B2616}
+html[data-theme="dark"] .cls-row.ok{background:#123B2A}html[data-theme="dark"] .cls-row.half{background:#2B2616}html[data-theme="dark"] .cls-row.bad{background:#3D1B21}
+html[data-theme="dark"] .steps-list .n,html[data-theme="dark"] .points li .n,html[data-theme="dark"] .pm,html[data-theme="dark"] .sim-seg label.on,html[data-theme="dark"] .co-btn,html[data-theme="dark"] .stage .no,html[data-theme="dark"] .pp-btn{filter:brightness(.78)}
+html[data-theme="dark"] .q-card .qn,html[data-theme="dark"] .cmp-opt b,html[data-theme="dark"] .blank{color:var(--ink)}
+html[data-theme="dark"] .blank{color:#B8EEF6}
+/* نصوص التدرج (الشعار والأرقام الكبيرة): تدرج فاتح في الوضع الليلي لأن بداية التدرج الأصلية كحلية */
+html[data-theme="dark"] .hero h1,html[data-theme="dark"] .big-pct,html[data-theme="dark"] .congrats-card .nm,html[data-theme="dark"] .lp-obj-n,html[data-theme="dark"] .sk-num b,html[data-theme="dark"] .sk-fw-name{background-image:linear-gradient(135deg,#8EE0EE,#5FE3A1 60%,#FFD98A);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
+html[data-theme="dark"] .bank{background:#172A30;border-color:#3F8593}
+html[data-theme="dark"] .chip{background:#22394A;color:#DDF6FA;border-color:#4F9AAA}
+html[data-theme="dark"] .disabled-area{opacity:.75}
+
 </style>
 </head>
 <body>
