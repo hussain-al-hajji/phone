@@ -473,7 +473,7 @@ Views.ex = {
     let out = '<div style="--ac:' + col + ';--acg:' + tint(col, .1) + '">' + Layout.crumbs(a ? '<span class="crumb-tag">' + h(a.title) + '</span>' : '<span class="crumb-tag">' + (isSurvey ? 'ختام البرنامج' : 'أنشطة') + '</span>') +
       (e.image ? '<img class="ex-img" src=\"' + imgSrc(e.image) + '\" alt="">' : '') +
       '<div class="ex-head"><div class="ico">' + h(e.icon || '✍️') + '</div><div><h1>' + h(e.title) + '</h1><div class="row" style="margin-top:4px"><span class="pill">' + (e.mode === 'group' ? '👥 جماعي' : '👤 فردي') + '</span>' + (e.format !== 'text' ? '<span class="pill">' + h(FORMATS[e.format]) + '</span>' : '') + '</div></div></div>' +
-      (Admin.ok() ? '<div class="live-row ex-live">' + Presence.chip(e.id) + Invite.btn(e) + '</div>' : '');
+      (Admin.ok() ? '<div class="live-row ex-live">' + Presence.chip(e.id) + Invite.btn(e) + Reveal.btn(e) + '</div>' : '');
     if (isSurvey) {
       out += '<div class="ex-block task"><div class="lbl">📝 قيّم تجربتك</div>' + richHtml(e.task) + '</div>' + '<div id="ansZone">' + surveyFormHtml(e) + '</div><div id="feedZone">' + surveyFeedHtml(e) + '</div></div>';
       return out;
@@ -490,7 +490,7 @@ Views.ex = {
     // النموذج المساعد (تلميح بمثال موجز) للتمارين النصية فقط؛ ويُحذف كليًا من النماذج التفاعلية
     const whyBox = '<div class="ex-block" style="margin-top:0"><div class="lbl">🎯 لماذا هذا النشاط؟</div>' + richHtml(e.why || 'لتطبيق مفاهيم المحور عمليًا.') + '</div>';
     if (e.format === 'text') out += '<div class="two-col">' + whyBox +
-      '<div class="ex-block model-box" style="margin-top:0"><div class="lbl">🧩 نموذج مساعد</div>' + (UIState.modelShown[e.id] ? '<div class="model-body">' + richHtml(e.model || 'فكّر في مثال من تجربتك كمستخدم لتطبيق تجاري، ثم طبّق الفكرة نفسها على الموقف.') + '</div>' : '<button class="btn btn-soft btn-sm" data-act="show-model" data-ex="' + h(e.id) + '">👁 أظهر النموذج المساعد</button>') + '</div></div>';
+      '<div class="ex-block model-box" style="margin-top:0"><div class="lbl">🧩 نموذج مساعد</div>' + (UIState.modelShown[e.id] || isRevealed(e) ? '<div class="model-body">' + richHtml(e.model || 'فكّر في مثال من تجربتك كمستخدم لتطبيق تجاري، ثم طبّق الفكرة نفسها على الموقف.') + '</div>' : '<button class="btn btn-soft btn-sm" data-act="show-model" data-ex="' + h(e.id) + '">👁 أظهر النموذج المساعد</button>') + '</div></div>';
     else out += '<div style="margin-top:22px">' + whyBox + '</div>';
     out += exNavHtml(e) + '</div>';
     return out;

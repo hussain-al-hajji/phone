@@ -65,7 +65,7 @@ async function register(p, name) { await p.fill('#reg_name', name); await p.fill
   R.adminTop = await topbar(D.p); check('adminTop', R.adminTop.join(',') === 'admin:لوحة التحكم,translate,prefs,admin-exit');
   await D.p.evaluate(() => Router.go('ex', { id: 'a1e1' })); await D.p.waitForTimeout(500);
   check('adminNotLocked', !(await D.p.$('.locked-note')) && !!(await D.p.$('#ans-a1e1')));
-  R.chip = await D.p.$eval('.ex-live .live-chip', e => e.innerText.replace(/\s+/g, ' ').trim()); check('chipCount2', /^2 /.test(R.chip));
+  await D.p.waitForTimeout(900); R.chip = await D.p.$eval('.ex-live .live-chip', e => e.innerText.replace(/\s+/g, ' ').trim()); check('chipCount2', /^2 /.test(R.chip));
   await D.p.click('.ex-live .live-chip'); await D.p.waitForTimeout(300);
   R.presenceModal = await D.p.$eval('.modal', e => e.innerText.replace(/\s+/g, ' ')); check('presenceNames', /سارة المتدربة/.test(R.presenceModal) && /\(1\) زائر/.test(R.presenceModal));
   await D.p.click('.modal [data-x]'); await D.p.waitForTimeout(200);
@@ -86,6 +86,24 @@ async function register(p, name) { await p.fill('#reg_name', name); await p.fill
   check('guestNoInvite', !(await G.p.$('.invite-pop')));
   await A.p.click('[data-go-inv]'); await A.p.waitForTimeout(500); check('inviteGoes', await A.p.evaluate(() => Router.cur.view === 'ex' && Router.cur.id === 'a1e5'));
   R.inviteBtnState = await D.p.$eval('.ex-live [data-act="invite-cancel"]', e => e.innerText).catch(() => null); check('inviteCancelBtn', !!R.inviteBtnState);
+  // 7b) كشف الإجابات: زر للمدرب في صفحة كل تمرين (نصي وتفاعلي ومحاكاة) وبجانب الدعوة، ولا يظهر أي زر كشف/تحقق للمتدرب
+  const vis = async (p, id) => { await p.evaluate(id => Router.go('ex', { id }), id); await p.waitForTimeout(450); };
+  for (const id of ['a1e1', 'a1e2', 'a1e3', 'a3e9', 'a1e8']) { await vis(D.p, id); R['revealBtn_' + id] = !!(await D.p.$('.ex-live [data-act="reveal"]')) && !!(await D.p.$('.ex-live [data-act^="invite-"]')); check('revealBtn_' + id, R['revealBtn_' + id]); }
+  await vis(G.p, 'a3e9'); await vis(A.p, 'a3e9');
+  check('traineeNoRevealOrCheck', !(await A.p.$('[data-act="reveal"],[data-act="sim-check"]')));
+  // محاكاة التصنيف (صيد الاحتكاك): قبل الكشف لا تصحيح ولا نتيجة، وبعده يظهر التصحيح وتُقفل
+  await D.p.evaluate(() => Router.go('ex', { id: 'a3e9' })); await D.p.waitForTimeout(400);
+  check('classifyHiddenBefore', await D.p.evaluate(() => !document.querySelector('.cls-why,.hs em')));
+  await D.p.click('.ex-live [data-act="reveal"]'); await D.p.waitForTimeout(700);
+  check('revealSavedAsTrue', at(await server(D.p), 'reveal/a3e9') === true);
+  check('classifyShownAfter', await D.p.evaluate(() => !!document.querySelector('.hs em')) );
+  check('classifyLockedAfter', await D.p.evaluate(() => [...document.querySelectorAll('#simZone [data-sim-f]')].every(i => i.disabled)));
+  await D.p.click('.ex-live [data-act="reveal"]'); await D.p.waitForTimeout(500);
+  // محاكاة إعدادات (صبر المستخدم): بعد الكشف يظهر الحل النموذجي
+  await vis(D.p, 'a1e8'); check('bestHiddenBefore', !(await D.p.$('.sim-best')));
+  await D.p.click('.ex-live [data-act="reveal"]'); await D.p.waitForTimeout(700);
+  check('bestShownAfter', !!(await D.p.$('.sim-best .gauge')) && /88/.test(await D.p.$eval('.sim-best', e => e.innerText)));
+  await D.p.click('.ex-live [data-act="reveal"]'); await D.p.waitForTimeout(400);
   // 8) لوحة التحكم: لا «معاينة كمتدرب»، وزر «عرض المنصة»، وعداد + دعوة في صف التمرين
   await D.p.click('[data-go="admin"]'); await D.p.waitForTimeout(500);
   check('noPreviewTool', !(await D.p.$('[data-tool="preview"]')) && !(await D.p.$('[data-act="preview"]')));

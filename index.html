@@ -1500,6 +1500,10 @@ html[data-theme="dark"] .hero h1,html[data-theme="dark"] .big-pct,html[data-them
 html[data-theme="dark"] .bank{background:#172A30;border-color:#3F8593}
 html[data-theme="dark"] .chip{background:#22394A;color:#DDF6FA;border-color:#4F9AAA}
 html[data-theme="dark"] .disabled-area{opacity:.75}
+.sim-best{margin-top:16px;padding:14px;border-radius:18px;border:2px solid var(--ok);background:var(--ok-bg)}
+.sim-best-h{font-family:var(--f-display);font-weight:800;margin-bottom:8px}
+.sim-ro{pointer-events:none;opacity:.92}
+html[data-theme="dark"] .sim-best{background:#0F2A20}
 
 </style>
 </head>
@@ -3679,7 +3683,7 @@ Views.ex = {
     let out = '<div style="--ac:' + col + ';--acg:' + tint(col, .1) + '">' + Layout.crumbs(a ? '<span class="crumb-tag">' + h(a.title) + '</span>' : '<span class="crumb-tag">' + (isSurvey ? 'ختام البرنامج' : 'أنشطة') + '</span>') +
       (e.image ? '<img class="ex-img" src=\"' + imgSrc(e.image) + '\" alt="">' : '') +
       '<div class="ex-head"><div class="ico">' + h(e.icon || '✍️') + '</div><div><h1>' + h(e.title) + '</h1><div class="row" style="margin-top:4px"><span class="pill">' + (e.mode === 'group' ? '👥 جماعي' : '👤 فردي') + '</span>' + (e.format !== 'text' ? '<span class="pill">' + h(FORMATS[e.format]) + '</span>' : '') + '</div></div></div>' +
-      (Admin.ok() ? '<div class="live-row ex-live">' + Presence.chip(e.id) + Invite.btn(e) + '</div>' : '');
+      (Admin.ok() ? '<div class="live-row ex-live">' + Presence.chip(e.id) + Invite.btn(e) + Reveal.btn(e) + '</div>' : '');
     if (isSurvey) {
       out += '<div class="ex-block task"><div class="lbl">📝 قيّم تجربتك</div>' + richHtml(e.task) + '</div>' + '<div id="ansZone">' + surveyFormHtml(e) + '</div><div id="feedZone">' + surveyFeedHtml(e) + '</div></div>';
       return out;
@@ -3696,7 +3700,7 @@ Views.ex = {
     // النموذج المساعد (تلميح بمثال موجز) للتمارين النصية فقط؛ ويُحذف كليًا من النماذج التفاعلية
     const whyBox = '<div class="ex-block" style="margin-top:0"><div class="lbl">🎯 لماذا هذا النشاط؟</div>' + richHtml(e.why || 'لتطبيق مفاهيم المحور عمليًا.') + '</div>';
     if (e.format === 'text') out += '<div class="two-col">' + whyBox +
-      '<div class="ex-block model-box" style="margin-top:0"><div class="lbl">🧩 نموذج مساعد</div>' + (UIState.modelShown[e.id] ? '<div class="model-body">' + richHtml(e.model || 'فكّر في مثال من تجربتك كمستخدم لتطبيق تجاري، ثم طبّق الفكرة نفسها على الموقف.') + '</div>' : '<button class="btn btn-soft btn-sm" data-act="show-model" data-ex="' + h(e.id) + '">👁 أظهر النموذج المساعد</button>') + '</div></div>';
+      '<div class="ex-block model-box" style="margin-top:0"><div class="lbl">🧩 نموذج مساعد</div>' + (UIState.modelShown[e.id] || isRevealed(e) ? '<div class="model-body">' + richHtml(e.model || 'فكّر في مثال من تجربتك كمستخدم لتطبيق تجاري، ثم طبّق الفكرة نفسها على الموقف.') + '</div>' : '<button class="btn btn-soft btn-sm" data-act="show-model" data-ex="' + h(e.id) + '">👁 أظهر النموذج المساعد</button>') + '</div></div>';
     else out += '<div style="margin-top:22px">' + whyBox + '</div>';
     out += exNavHtml(e) + '</div>';
     return out;
@@ -4051,12 +4055,20 @@ const Sims = {
   },
   html(e) {
     const S = Sims.of(e); const col = exColor(e);
-    const can = Me.isReg() && (e.mode !== 'group' || Me.group() || Me.isAdmin()); const dis = can ? '' : 'disabled';
-    const s = Sims.state(e); const key = postKey(e); const post = key ? (Store.posts[e.id] || {})[key] : null;
+    const rev = isRevealed(e); const locked = S.hidden && rev; // بعد كشف المدرب للإجابات تُقفل محاكاة التصنيف ويظهر التصحيح
+    const can = Me.isReg() && (e.mode !== 'group' || Me.group() || Me.isAdmin()) && !locked; const dis = can ? '' : 'disabled';
+    const s = Sims.state(e); if (S.hidden) s.done = rev; const key = postKey(e); const post = key ? (Store.posts[e.id] || {})[key] : null;
     return '<div class="answer-box sim-box" style="--ac:' + col + ';--acg:' + tint(col, .1) + '">' + (!Me.isReg() ? '<div class="locked-note">🔒 للمسجلين فقط — يمكنك التجربة بعد التسجيل.</div>' : e.mode === 'group' && !Me.group() && !Me.isAdmin() ? '<div class="locked-note">👆 اختر مجموعتك أولًا.</div>' : '') +
       (post ? '<div class="status-note" style="margin-bottom:6px">✅ آخر حفظ: ' + h(post.name || '') + ' · ' + ago(post.ts || 0) + ' — يمكنك التعديل والحفظ مجددًا.</div>' : '') +
-      '<div class="sim-grid"><div class="sim-form">' + S.form(s, e.id, dis) + '</div><div id="simLive-' + h(e.id) + '">' + S.live(s) + '</div></div>' +
+      '<div class="sim-grid"><div class="sim-form">' + S.form(s, e.id, dis) + '</div><div id="simLive-' + h(e.id) + '">' + S.live(s) + '</div></div>' + Sims.bestHtml(e, S, rev) +
       '<div class="save-row"><button class="btn btn-primary" data-act="sim-save" data-ex="' + h(e.id) + '" ' + dis + '>💾 حفظ النتيجة' + (e.mode === 'group' ? ' للمجموعة' : '') + '</button><button class="btn btn-ghost btn-sm" data-act="sim-reset" data-ex="' + h(e.id) + '" ' + dis + '>↺ البدء من جديد</button></div></div>';
+  },
+  // الحل النموذجي: يظهر للجميع بعد أن يكشف المدرب الإجابات (محاكيات الإعدادات؛ أما التصنيف فتصحيحه داخل النموذج نفسه)
+  bestHtml(e, S, rev) {
+    if (!rev || !S.best) return '';
+    const st = Object.assign(S.def(), JSON.parse(JSON.stringify(S.best))); const mine = Sims.state(e);
+    return '<div class="sim-best"><div class="sim-best-h">✅ الحل النموذجي <span class="muted">— كشفه المدرب</span></div><div class="sim-grid"><div class="sim-form sim-ro">' + S.form(st, e.id + '-best', 'disabled') + '</div><div>' + S.live(st) + '</div></div>' +
+      '<div class="status-note">نتيجتك الحالية: <b>' + h(S.summary(mine)) + '</b><br>نتيجة الحل النموذجي: <b>' + h(S.summary(st)) + '</b></div></div>';
   },
   refresh(exId) { const e = Content.ex(exId); if (!e) return; const box = document.getElementById('simLive-' + exId); if (box) box.innerHTML = Sims.of(e).live(Sims.state(e)); },
   set(exId, path, val) {
@@ -4074,7 +4086,8 @@ const Sims = {
   },
   feed(e) {
     const S = Sims.of(e); const ps = Store.posts[e.id] || {}; const myKey = Me.isReg() ? postKey(e) : null;
-    const keys = Object.keys(ps).filter(k => ps[k] && ps[k].state).sort((a, b) => (S.metric(ps[b].state) - S.metric(ps[a].state)));
+    const veil = S.hidden && !isRevealed(e) && !Admin.ok(); // نتائج التصنيف لا تظهر للمتدربين قبل الكشف
+    const keys = Object.keys(ps).filter(k => ps[k] && ps[k].state).sort((a, b) => veil ? (ps[b].ts || 0) - (ps[a].ts || 0) : (S.metric(ps[b].state) - S.metric(ps[a].state)));
     const del = k => Admin.ctl() ? '<button class="del-btn" data-act="del-post" data-ex="' + h(e.id) + '" data-k="' + h(k) + '">🗑</button>' : '';
     if (!keys.length) return '<div class="feed"><div class="feed-head"><span class="live-dot"></span><h3>' + (e.mode === 'group' ? 'مقارنة المجموعات' : 'نتائج الجميع') + '</h3></div><div class="empty">لا توجد نتائج محفوظة بعد.</div></div>';
     if (e.sim === 'budget') {
@@ -4082,11 +4095,11 @@ const Sims = {
         keys.map((k, i) => { const r = BudgetSim.calc(ps[k].state); return '<tr class="' + (k === myKey ? 'mine' : '') + '"><td class="num">' + (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1) + '</td><td><b>' + h(Groups.label(+k.slice(1))) + '</b><div class="muted" style="font-size:11.5px">' + CHANNELS.filter(c => +ps[k].state.alloc[c.k]).map(c => c.n.split(' ')[0] + ' ' + QAR(ps[k].state.alloc[c.k])).join(' · ') + '</div></td><td class="num">' + Math.round(r.orders) + '</td><td class="num">' + r.roas.toFixed(2) + '</td><td class="num">' + (r.cac ? QAR(r.cac) : '—') + '</td><td class="num">' + QAR(r.gross) + '</td><td class="num"><b>' + QAR(r.score) + '</b></td><td>' + Likes.btn('posts/' + e.id + '/' + k, ps[k].likes) + del(k) + '</td></tr>'; }).join('') + '</tbody></table></div></div>';
     }
     return '<div class="feed"><div class="feed-head"><span class="live-dot"></span><h3>نتائج الجميع</h3><span class="pill num">' + keys.length + '</span></div><div class="posts">' + keys.map(k => { const p = ps[k];
-      return '<div class="post ' + (k === myKey ? 'mine' : '') + '"><div class="post-head"><span class="av">' + h(initials(p.name)) + '</span><div><div class="who">' + h(p.name || '') + '</div><div class="role">' + h(p.role || '') + ' · ' + ago(p.ts || 0) + '</div></div><span class="grow"></span><span class="sim-badge num">' + (S.unit != null ? QAR(S.metric(p.state)) + S.unit : S.metric(p.state) + '%') + '</span></div><div class="post-body">' + h(S.summary(p.state)) + '</div><div class="post-foot">' + Likes.btn('posts/' + e.id + '/' + k, p.likes) + del(k) + '</div></div>'; }).join('') + '</div></div>';
+      return '<div class="post ' + (k === myKey ? 'mine' : '') + '"><div class="post-head"><span class="av">' + h(initials(p.name)) + '</span><div><div class="who">' + h(p.name || '') + '</div><div class="role">' + h(p.role || '') + ' · ' + ago(p.ts || 0) + '</div></div><span class="grow"></span>' + (veil ? '' : '<span class="sim-badge num">' + (S.unit != null ? QAR(S.metric(p.state)) + S.unit : S.metric(p.state) + '%') + '</span>') + '</div><div class="post-body">' + h(S.summary(p.state)) + '</div><div class="post-foot">' + Likes.btn('posts/' + e.id + '/' + k, p.likes) + del(k) + '</div></div>'; }).join('') + '</div></div>';
   },
   async save(exId) {
     const e = Content.ex(exId); const key = postKey(e); if (!key || !Me.isReg()) return; const S = Sims.of(e); const s = Sims.state(e); const me = Me.data;
-    if (S.needsCheck && !s.done) { UI.alert('اضغط «تحقّق من إجاباتي» أولًا، ثم احفظ النتيجة.'); return; }
+    if (S.hidden && isRevealed(e)) { UI.toast('كشف المدرب الإجابات: أُقفلت المحاكاة'); return; }
     if (e.sim === 'budget' && BudgetSim.spent(s) < BUDGET_TOTAL * 0.9) { if (!(await UI.confirm('لم توزعوا إلا ' + QAR(BudgetSim.spent(s)) + ' ر.س من الميزانية. حفظ النتيجة رغم ذلك؟', { ok: 'حفظ' }))) return; }
     const upd = { state: JSON.parse(JSON.stringify(s)), metric: S.metric(s), summary: S.summary(s), name: me.name, role: me.role || '', ts: DB.now() };
     if (e.mode === 'group' && !me.admin) { upd.group = Me.group(); upd.by = me.uid; upd['members/' + me.uid] = true; } else upd.uid = me.uid;
@@ -4536,6 +4549,7 @@ function factorSim(c) {
 function classifySim(c) {
   const pts = (it, v) => v === it.k ? 1 : (it.alt && it.alt.indexOf(v) > -1 ? 0.5 : 0);
   const S = {
+    hidden: true, // النتيجة والتصحيح لا يظهران للمتدرب إلا بعد أن يكشف المدرب الإجابات (s.done تُضبط وقت العرض)
     def() { return { m: {}, done: false }; },
     answered(s) { return c.items.filter((_, i) => (s.m || {})[i] != null && (s.m || {})[i] !== '').length; },
     score(s) { return Math.round(c.items.reduce((t, it, i) => t + pts(it, (s.m || {})[i]), 0) / c.items.length * 100); },
@@ -4545,16 +4559,15 @@ function classifySim(c) {
         '<div class="cls-list">' + c.items.map((it, i) => { const v = (s.m || {})[i]; const p = s.done ? pts(it, v) : -1;
           return '<div class="cls-row ' + (p === 1 ? 'ok' : p === 0.5 ? 'half' : p === 0 ? 'bad' : '') + '"><div class="cls-t"><span class="num">' + (i + 1) + '</span>' + h(it.t) + '</div>' + SimKit.seg(s, id, d, 'm.' + i, c.opts) +
             (s.done ? '<div class="cls-why">' + (p === 1 ? '✅ ' : p === 0.5 ? '🟡 مقبول، والأدق: «' + h(lbl(it.k)) + '». ' : '❌ الأنسب: «' + h(lbl(it.k)) + '». ') + h(it.why || '') + '</div>' : '') + '</div>'; }).join('') + '</div>') +
-        '<div class="row" style="margin-top:10px">' + (s.done ? '<span class="status-note">🔒 أُقفلت الإجابات بعد التحقق. احفظ نتيجتك، أو اضغط «البدء من جديد» لمحاولة أخرى.</span>' : '<button class="btn btn-soft btn-sm" data-act="sim-check" data-ex="' + h(id) + '" ' + dis + '>🔎 تحقّق من إجاباتي</button>') + '</div>';
+        (s.done ? '<div class="status-note" style="margin-top:8px">🔓 كشف المدرب الإجابات: هذا التصحيح لإجاباتك المحفوظة.</div>' : '');
     },
     live(s) {
       const n = S.answered(s), N = c.items.length;
-      const top = s.done ? SimKit.gauge(S.score(s), c.label, S.score(s) >= 80 ? 'قراءة ممتازة 👏' : S.score(s) >= 55 ? 'قريب، راجع البنود المصححة' : 'راجع التصحيح وأعد المحاولة') : SimKit.gauge(Math.round(n / N * 100), 'أنجزت ' + n + ' من ' + N, 'تظهر النتيجة بعد الضغط على «تحقّق من إجاباتي».');
+      const top = s.done ? SimKit.gauge(S.score(s), c.label, S.score(s) >= 80 ? 'قراءة ممتازة 👏' : S.score(s) >= 55 ? 'قريب، راجع البنود المصححة' : 'راجع التصحيح') : SimKit.gauge(Math.round(n / N * 100), 'أنجزت ' + n + ' من ' + N, 'يكشف المدرب الإجابات والتصحيح لاحقًا.');
       return '<div class="sim-live">' + top + (c.mock ? c.mock(s) : '') + (c.note ? SimKit.note(c.note) : '') + '</div>';
     },
-    summary(s) { return (s.done ? c.label + ' ' + S.score(s) + '%' : 'لم يتحقق بعد') + ' · ' + S.answered(s) + '/' + c.items.length; },
-    metric(s) { return s.done ? S.score(s) : 0; },
-    needsCheck: true
+    summary(s) { return 'أجاب على ' + S.answered(s) + ' من ' + c.items.length; },
+    metric(s) { return S.score(s); }
   };
   return S;
 }
@@ -4610,7 +4623,7 @@ const GapSim = {
   picked(s) { return GAP_FIXES.filter(f => (s.fx || {})[f.k]); },
   calc(s) {
     const pk = GapSim.picked(s); const r = GAP_BASE.slice(); pk.forEach(f => { if (f.st >= 0) r[f.st] += f.v; });
-    const top = pk.some(f => f.k === 'ads') ? 13000 : 10000; const n = [top]; r.forEach((x, i) => n.push(Math.round(n[i] * x)));
+    const top = pk.some(f => f.k === 'ads') ? 10800 : 10000; const n = [top]; r.forEach((x, i) => n.push(Math.round(n[i] * x)));
     return { n, r, cost: pk.some(f => f.k === 'ads') ? 12000 : 0 };
   },
   onSet(s, path, val) { if (val && GapSim.picked(s).length > 3) { s.fx[path.split('.')[1]] = false; UI.toast('لديكم 3 بطاقات إصلاح فقط'); return 'rerender'; } },
@@ -4624,10 +4637,11 @@ const GapSim = {
     const c = GapSim.calc(s); const mx = c.n[0]; const leaks = c.r.map((x, i) => ({ i, lost: c.n[i] - c.n[i + 1] })); const big = leaks.slice().sort((a, b) => b.lost - a.lost)[0];
     return '<div class="sim-live"><div class="kpi-grid"><div><span>مهتمون</span><b class="num">' + QAR(c.n[0]) + '</b></div><div><span>مشترون</span><b class="num">' + QAR(c.n[3]) + '</b></div><div><span>تحويل كلي</span><b class="num">' + (c.n[3] / c.n[0] * 100).toFixed(1) + '%</b></div></div>' +
       '<div class="funnel">' + c.n.map((v, i) => '<div class="fn-row"><span>' + GAP_STAGES[i] + '</span><i style="width:' + Math.max(4, v / mx * 100) + '%"></i><b class="num">' + QAR(v) + '</b></div>' + (i < 3 ? '<div class="fn-leak ' + (i === big.i ? 'big' : '') + '">↓ <span class="num">' + Math.round(c.r[i] * 100) + '%</span> يكملون · يتسرّب <span class="num">' + QAR(leaks[i].lost) + '</span>' + (i === big.i ? ' — أكبر تسرّب' : '') + '</div>' : '')).join('') + '</div>' +
-      (c.cost ? '<div class="bud-score">💸 مضاعفة الإعلانات كلّفت <span class="num">12,000</span> ر.س وأدخلت مهتمين أكثر إلى المسار نفسه المثقوب.</div>' : '') + SimKit.note('المشكلة ليست في جذب الاهتمام؛ بل في المكان الذي ينقطع فيه المسار.') + '</div>';
+      (c.cost ? '<div class="bud-score">💸 مضاعفة الإعلانات كلّفت <span class="num">12,000</span> ر.س وزادت المهتمين <span class="num">8%</span> فقط، وأدخلتهم إلى المسار نفسه المثقوب.</div>' : '') + SimKit.note('المشكلة ليست في جذب الاهتمام؛ بل في المكان الذي ينقطع فيه المسار.') + '</div>';
   },
   summary(s) { const c = GapSim.calc(s); return QAR(c.n[3]) + ' مشترٍ · ' + GapSim.picked(s).map(f => f.t).join('، '); },
-  metric(s) { return GapSim.calc(s).n[3]; }, unit: ''
+  metric(s) { return GapSim.calc(s).n[3]; }, unit: '',
+  best: { fx: { photos: true, guest: true, remind: true } }
 };
 
 // ================= المحور 3: صيد الاحتكاك =================
@@ -4985,6 +4999,21 @@ const AiSim = classifySim({
   note: 'الذكاء الاصطناعي يسرّع وينفّذ على نطاق واسع؛ والإنسان يحكم ويتحمل المسؤولية.'
 });
 
+// الحل النموذجي لكل محاكاة (يظهر للمتدربين بعد أن يكشف المدرب الإجابات)
+PatienceSim.best = { load: 1, popup: 'none', price: true, size: 'inline', taps: 2, text: 'bullets', imgs: 'many' };
+TimingSim.best = { when: 'hour', ch: 'inapp', msg: 'itemSize', freq: 2, quiet: true, dest: 'cart' };
+PersSim.best = { sig: { name: true, cat: true, item: true, size: true, city: true, match: true } };
+BeautySim.best = { banner: 40, anim: 'light', contrast: 'high', btn: 48, labels: true, tabs: 4, colors: 4 };
+PathSim.best = { keep: { home: true, pdp: true, cart: true, pay: true }, search: true };
+TrustSim.best = { t: { total: true, logos: true, returns: true, reviews: true, contact: true, verified: true, eta: true } };
+LastSim.best = { btn: 'lock', otp: 'auto', timeout: 'long', err: 'clear', fee: false, confirm: 'full', msg: true, spinner: false };
+KpiSim.best = { k: { conv: true, cartAb: true, payDone: true, aov: true, device: true }, split: 'device', period: 'month' };
+RadarSim.best = { metric: 'cr', seg: 'android', base: 'wk', thr: 10 };
+ImproveSim.best = { a: { bug: '1', guest: '1', ship: '1', search: '2', reviews: '2', redesign: '3' } };
+CheckoutSim.best = { account: 'guest', fields: 7, ship: 'early', pay: { card: true, debit: true, wallet: true, cod: true, bnpl: true }, trust: { badges: true, returns: true, contact: true }, progress: true, autofill: true, summary: true, inlineErr: true, coupon: 'collapsed', upsell: false };
+BudgetSim.best = { alloc: { meta: 1000, google: 1500, tiktok: 1000, influ: 750, market: 2750, crm: 1000, content: 0 } };
+StoreSim.best = { name: 'دار المسك', cat: 'عطور وبخور', lang: 'both', cur2: true, title: 'عطر عود طبيعي للرجال، ثبات طويل، 100 مل', price: 249, compare: 299, sku: 'MSK-OUD-100', variants: '50 مل، 100 مل', bullets: 'ثبات يدوم طوال اليوم\nعود طبيعي بدون كحول\nعبوة هدية جاهزة', img: 'both', zones: { doha: true, qatar: true, gcc: true }, shipShow: 'early', freeFrom: 300, pay: { debit: true, card: true, wallet: true, cod: true }, returns: 14, privacy: true, domain: true, licence: true, tracking: true, testOrder: true };
+
 Object.assign(SIM_TYPES, { patience: 'صبر المستخدم', gap: 'من الإعجاب إلى الشراء', hunt: 'صيد الاحتكاك', timing: 'توقيت الرسالة', pers: 'عمق التخصيص', beauty: 'الجمال مقابل السهولة', place: 'ترتيب صفحة المنتج', path: 'أقصر طريق للشراء', trust: 'مختبر الثقة', last: 'آخر عشر ثوانٍ', kpi: 'لوحة المؤشرات', radar: 'رادار الانحرافات', improve: 'مدير التحسين', ai: 'الإنسان والآلة' });
 Object.assign(SIMS, { patience: PatienceSim, gap: GapSim, hunt: HuntSim, timing: TimingSim, pers: PersSim, beauty: BeautySim, place: PlaceSim, path: PathSim, trust: TrustSim, last: LastSim, kpi: KpiSim, radar: RadarSim, improve: ImproveSim, ai: AiSim });
 
@@ -5042,6 +5071,13 @@ const Presence = {
   refreshModal() { const pm = Presence._modal; if (pm && pm.m.el.isConnected) pm.m.el.innerHTML = pm.body(); }
 };
 
+// زر كشف الإجابات: للمدرب فقط، في صفحة التمرين وفي صف التمرين بلوحة التحكم (لكل أنواع التمارين بما فيها المحاكاة)
+const Reveal = {
+  btn(e) {
+    if (!Admin.ok() || !e || e.kind === 'survey') return ''; const on = isRevealed(e);
+    return '<button class="btn btn-xs btn-mint" data-act="reveal" data-id="' + h(e.id) + '" title="' + (on ? 'الإجابات ظاهرة للمتدربين — اضغط لإخفائها' : 'يكشف الإجابات الصحيحة والتصحيح لكل المتدربين') + '">' + (on ? '🔒 إخفاء الإجابات' : '🔓 كشف الإجابات') + '</button>';
+  }
+};
 const INVITE_TTL = 3 * 3600000; // لا تظهر دعوة أقدم من 3 ساعات لمن يفتح المنصة لاحقًا
 const Invite = {
   m: null, shownId: null,
@@ -5111,24 +5147,23 @@ function exSummary(e) {
   const ps = Store.posts[e.id] || {}; const keys = Object.keys(ps).filter(k => ps[k]).sort((a, b) => (ps[b].ts || 0) - (ps[a].ts || 0));
   if (!keys.length) return '<div class="summary">لا مشاركات بعد.</div>';
   const reveal = isRevealed(e);
-  return '<div class="summary"><b class="num">' + keys.length + '</b> مشاركة' + (e.format !== 'text' && e.format !== 'sim' ? ' · ' + (reveal ? '🔓 مكشوفة' : '🔒 غير مكشوفة') : '') +
+  return '<div class="summary"><b class="num">' + keys.length + '</b> مشاركة' + (e.kind !== 'survey' ? ' · ' + (reveal ? '🔓 مكشوفة' : '🔒 غير مكشوفة') : '') +
     keys.slice(0, 30).map(k => { const p = ps[k]; const who = k.charAt(0) === 'g' && e.mode === 'group' ? Groups.label(+k.slice(1)) : (p.name || 'مشارك');
       let brief = '';
       if (e.format === 'text') brief = h(String(p.text || '').slice(0, 140)) + (String(p.text || '').length > 140 ? '…' : '');
-      else if (e.format === 'sim') brief = h(p.summary || '');
+      else if (e.format === 'sim') brief = h(p.summary || '') + (p.metric != null && Sims.of(e).hidden ? ' · النتيجة <b class="num">' + h(p.metric) + '%</b>' : '');
       else { const a = ansList(p.answers, e.items.length); let sc = 0; e.items.forEach((it, i) => { const v = a[i]; if (v == null) return; if (e.format === 'mcq' ? +v === +it.answer : e.format === 'truefalse' ? ((v === true || v === 'true') === !!it.answer) : v === it.answer) sc++; }); brief = 'الصحيح: ' + sc + ' من ' + e.items.length; }
       return '<div class="it"><b>' + h(who) + ':</b><span class="grow">' + brief + '</span><button class="del-btn" data-act="del-post" data-ex="' + h(e.id) + '" data-k="' + h(k) + '" title="حذف هذه المشاركة وحدها">🗑</button></div>'; }).join('') + '</div>';
 }
 function exRow(e, o = {}) {
   const isDef = !!DEF_EX[e.id];
-  return '<div class="ex-row"><div class="live-row">' + Presence.chip(e.id) + Invite.btn(e) + '</div><div class="top"><span style="font-size:18px">' + h(e.icon || '✍️') + '</span><span class="nm">' + h(e.title) + ' ' + tags(e) + '<span class="tag fmt">' + h(FORMATS[e.format] || '') + ' · ' + (e.mode === 'group' ? 'جماعي' : 'فردي') + '</span></span>' +
+  return '<div class="ex-row"><div class="live-row">' + Presence.chip(e.id) + Invite.btn(e) + Reveal.btn(e) + '</div><div class="top"><span style="font-size:18px">' + h(e.icon || '✍️') + '</span><span class="nm">' + h(e.title) + ' ' + tags(e) + '<span class="tag fmt">' + h(FORMATS[e.format] || '') + ' · ' + (e.mode === 'group' ? 'جماعي' : 'فردي') + '</span></span>' +
     (o.kind !== 'survey' ? '<button class="btn btn-ghost btn-xs" data-act="ex-move" data-d="-1" data-id="' + h(e.id) + '" data-key="' + h(o.axis || '_acts') + '" title="تحريك لأعلى">↑</button><button class="btn btn-ghost btn-xs" data-act="ex-move" data-d="1" data-id="' + h(e.id) + '" data-key="' + h(o.axis || '_acts') + '" title="تحريك لأسفل">↓</button>' : '') +
     '<button class="btn btn-soft btn-xs" data-go="' + (o.kind === 'activity' || o.kind === 'survey' ? 'actEdit' : 'exEdit') + '" data-id="' + h(e.id) + '"' + (o.axis ? ' data-axis="' + h(o.axis) + '"' : '') + '>✏️ تعديل</button>' +
     '<button class="btn btn-ghost btn-xs" data-act="toggle-vis" data-id="' + h(e.id) + '">' + (e._hidden ? '👁 إظهار' : '🙈 إخفاء') + '</button>' +
     (o.kind !== 'survey' ? '<button class="btn btn-ghost btn-xs" data-act="copy-ex" data-id="' + h(e.id) + '">🧬 نسخ</button>' : '') +
     (isDef && e._modified ? '<button class="btn btn-ghost btn-xs" data-act="reset-ex" data-id="' + h(e.id) + '">↺ استرجاع الافتراضي</button>' : '') + (o.kind !== 'survey' ? '<button class="btn btn-danger btn-xs" data-act="delete-ex" data-id="' + h(e.id) + '">🗑 حذف التمرين</button>' : '') +
     '<button class="btn btn-danger btn-xs" data-act="clear-posts" data-id="' + h(e.id) + '">🧹 مسح المشاركات</button>' +
-    (e.format !== 'text' && e.format !== 'sim' ? '<button class="btn btn-mint btn-xs" data-act="reveal" data-id="' + h(e.id) + '">' + (isRevealed(e) ? '🔒 إخفاء الإجابات' : '🔓 كشف الإجابات الصحيحة') + '</button>' : '') +
     '</div>' + exSummary(e) + '</div>';
 }
 
@@ -6650,7 +6685,6 @@ document.addEventListener('click', async ev => {
       const me = Me.data; await DB.set('posts/' + exId + '/' + me.uid, Object.assign({}, (Store.posts[exId] || {})[me.uid] || {}, { ratings: d.ratings, nps: d.nps, text: ($('#svText') || {}).value ? $('#svText').value.trim() : '', name: me.name, role: me.role || '', uid: me.uid, ts: DB.now() }));
       UIState.editing[exId] = false; delete UIState.draft.sv; UI.toast('✅ شكرًا لتقييمك'); App.render(); break;
     }
-    case 'sim-check': { const e = Content.ex(exId); Sims.state(e).done = true; App.render(); break; }
     case 'sim-step': { const e = Content.ex(exId); Sims.state(e).step = +t.getAttribute('data-i'); App.render(); break; }
     case 'sim-reset': { const e = Content.ex(exId); if (await UI.confirm('إعادة المحاكاة إلى البداية؟ (لن تُحذف النتيجة المحفوظة إلا إذا حفظت من جديد)', { ok: 'إعادة' })) { UIState.sim[exId] = Sims.of(e).def(); App.render(); } break; }
     case 'save-text': saveText(exId); break;

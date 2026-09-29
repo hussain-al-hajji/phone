@@ -1478,3 +1478,7 @@ html[data-theme="dark"] .hero h1,html[data-theme="dark"] .big-pct,html[data-them
 html[data-theme="dark"] .bank{background:#172A30;border-color:#3F8593}
 html[data-theme="dark"] .chip{background:#22394A;color:#DDF6FA;border-color:#4F9AAA}
 html[data-theme="dark"] .disabled-area{opacity:.75}
+.sim-best{margin-top:16px;padding:14px;border-radius:18px;border:2px solid var(--ok);background:var(--ok-bg)}
+.sim-best-h{font-family:var(--f-display);font-weight:800;margin-bottom:8px}
+.sim-ro{pointer-events:none;opacity:.92}
+html[data-theme="dark"] .sim-best{background:#0F2A20}

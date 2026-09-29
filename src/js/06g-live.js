@@ -50,6 +50,13 @@ const Presence = {
   refreshModal() { const pm = Presence._modal; if (pm && pm.m.el.isConnected) pm.m.el.innerHTML = pm.body(); }
 };
 
+// زر كشف الإجابات: للمدرب فقط، في صفحة التمرين وفي صف التمرين بلوحة التحكم (لكل أنواع التمارين بما فيها المحاكاة)
+const Reveal = {
+  btn(e) {
+    if (!Admin.ok() || !e || e.kind === 'survey') return ''; const on = isRevealed(e);
+    return '<button class="btn btn-xs btn-mint" data-act="reveal" data-id="' + h(e.id) + '" title="' + (on ? 'الإجابات ظاهرة للمتدربين — اضغط لإخفائها' : 'يكشف الإجابات الصحيحة والتصحيح لكل المتدربين') + '">' + (on ? '🔒 إخفاء الإجابات' : '🔓 كشف الإجابات') + '</button>';
+  }
+};
 const INVITE_TTL = 3 * 3600000; // لا تظهر دعوة أقدم من 3 ساعات لمن يفتح المنصة لاحقًا
 const Invite = {
   m: null, shownId: null,

@@ -36,6 +36,7 @@ function factorSim(c) {
 function classifySim(c) {
   const pts = (it, v) => v === it.k ? 1 : (it.alt && it.alt.indexOf(v) > -1 ? 0.5 : 0);
   const S = {
+    hidden: true, // النتيجة والتصحيح لا يظهران للمتدرب إلا بعد أن يكشف المدرب الإجابات (s.done تُضبط وقت العرض)
     def() { return { m: {}, done: false }; },
     answered(s) { return c.items.filter((_, i) => (s.m || {})[i] != null && (s.m || {})[i] !== '').length; },
     score(s) { return Math.round(c.items.reduce((t, it, i) => t + pts(it, (s.m || {})[i]), 0) / c.items.length * 100); },
@@ -45,16 +46,15 @@ function classifySim(c) {
         '<div class="cls-list">' + c.items.map((it, i) => { const v = (s.m || {})[i]; const p = s.done ? pts(it, v) : -1;
           return '<div class="cls-row ' + (p === 1 ? 'ok' : p === 0.5 ? 'half' : p === 0 ? 'bad' : '') + '"><div class="cls-t"><span class="num">' + (i + 1) + '</span>' + h(it.t) + '</div>' + SimKit.seg(s, id, d, 'm.' + i, c.opts) +
             (s.done ? '<div class="cls-why">' + (p === 1 ? '✅ ' : p === 0.5 ? '🟡 مقبول، والأدق: «' + h(lbl(it.k)) + '». ' : '❌ الأنسب: «' + h(lbl(it.k)) + '». ') + h(it.why || '') + '</div>' : '') + '</div>'; }).join('') + '</div>') +
-        '<div class="row" style="margin-top:10px">' + (s.done ? '<span class="status-note">🔒 أُقفلت الإجابات بعد التحقق. احفظ نتيجتك، أو اضغط «البدء من جديد» لمحاولة أخرى.</span>' : '<button class="btn btn-soft btn-sm" data-act="sim-check" data-ex="' + h(id) + '" ' + dis + '>🔎 تحقّق من إجاباتي</button>') + '</div>';
+        (s.done ? '<div class="status-note" style="margin-top:8px">🔓 كشف المدرب الإجابات: هذا التصحيح لإجاباتك المحفوظة.</div>' : '');
     },
     live(s) {
       const n = S.answered(s), N = c.items.length;
-      const top = s.done ? SimKit.gauge(S.score(s), c.label, S.score(s) >= 80 ? 'قراءة ممتازة 👏' : S.score(s) >= 55 ? 'قريب، راجع البنود المصححة' : 'راجع التصحيح وأعد المحاولة') : SimKit.gauge(Math.round(n / N * 100), 'أنجزت ' + n + ' من ' + N, 'تظهر النتيجة بعد الضغط على «تحقّق من إجاباتي».');
+      const top = s.done ? SimKit.gauge(S.score(s), c.label, S.score(s) >= 80 ? 'قراءة ممتازة 👏' : S.score(s) >= 55 ? 'قريب، راجع البنود المصححة' : 'راجع التصحيح') : SimKit.gauge(Math.round(n / N * 100), 'أنجزت ' + n + ' من ' + N, 'يكشف المدرب الإجابات والتصحيح لاحقًا.');
       return '<div class="sim-live">' + top + (c.mock ? c.mock(s) : '') + (c.note ? SimKit.note(c.note) : '') + '</div>';
     },
-    summary(s) { return (s.done ? c.label + ' ' + S.score(s) + '%' : 'لم يتحقق بعد') + ' · ' + S.answered(s) + '/' + c.items.length; },
-    metric(s) { return s.done ? S.score(s) : 0; },
-    needsCheck: true
+    summary(s) { return 'أجاب على ' + S.answered(s) + ' من ' + c.items.length; },
+    metric(s) { return S.score(s); }
   };
   return S;
 }
@@ -110,7 +110,7 @@ const GapSim = {
   picked(s) { return GAP_FIXES.filter(f => (s.fx || {})[f.k]); },
   calc(s) {
     const pk = GapSim.picked(s); const r = GAP_BASE.slice(); pk.forEach(f => { if (f.st >= 0) r[f.st] += f.v; });
-    const top = pk.some(f => f.k === 'ads') ? 13000 : 10000; const n = [top]; r.forEach((x, i) => n.push(Math.round(n[i] * x)));
+    const top = pk.some(f => f.k === 'ads') ? 10800 : 10000; const n = [top]; r.forEach((x, i) => n.push(Math.round(n[i] * x)));
     return { n, r, cost: pk.some(f => f.k === 'ads') ? 12000 : 0 };
   },
   onSet(s, path, val) { if (val && GapSim.picked(s).length > 3) { s.fx[path.split('.')[1]] = false; UI.toast('لديكم 3 بطاقات إصلاح فقط'); return 'rerender'; } },
@@ -124,10 +124,11 @@ const GapSim = {
     const c = GapSim.calc(s); const mx = c.n[0]; const leaks = c.r.map((x, i) => ({ i, lost: c.n[i] - c.n[i + 1] })); const big = leaks.slice().sort((a, b) => b.lost - a.lost)[0];
     return '<div class="sim-live"><div class="kpi-grid"><div><span>مهتمون</span><b class="num">' + QAR(c.n[0]) + '</b></div><div><span>مشترون</span><b class="num">' + QAR(c.n[3]) + '</b></div><div><span>تحويل كلي</span><b class="num">' + (c.n[3] / c.n[0] * 100).toFixed(1) + '%</b></div></div>' +
       '<div class="funnel">' + c.n.map((v, i) => '<div class="fn-row"><span>' + GAP_STAGES[i] + '</span><i style="width:' + Math.max(4, v / mx * 100) + '%"></i><b class="num">' + QAR(v) + '</b></div>' + (i < 3 ? '<div class="fn-leak ' + (i === big.i ? 'big' : '') + '">↓ <span class="num">' + Math.round(c.r[i] * 100) + '%</span> يكملون · يتسرّب <span class="num">' + QAR(leaks[i].lost) + '</span>' + (i === big.i ? ' — أكبر تسرّب' : '') + '</div>' : '')).join('') + '</div>' +
-      (c.cost ? '<div class="bud-score">💸 مضاعفة الإعلانات كلّفت <span class="num">12,000</span> ر.س وأدخلت مهتمين أكثر إلى المسار نفسه المثقوب.</div>' : '') + SimKit.note('المشكلة ليست في جذب الاهتمام؛ بل في المكان الذي ينقطع فيه المسار.') + '</div>';
+      (c.cost ? '<div class="bud-score">💸 مضاعفة الإعلانات كلّفت <span class="num">12,000</span> ر.س وزادت المهتمين <span class="num">8%</span> فقط، وأدخلتهم إلى المسار نفسه المثقوب.</div>' : '') + SimKit.note('المشكلة ليست في جذب الاهتمام؛ بل في المكان الذي ينقطع فيه المسار.') + '</div>';
   },
   summary(s) { const c = GapSim.calc(s); return QAR(c.n[3]) + ' مشترٍ · ' + GapSim.picked(s).map(f => f.t).join('، '); },
-  metric(s) { return GapSim.calc(s).n[3]; }, unit: ''
+  metric(s) { return GapSim.calc(s).n[3]; }, unit: '',
+  best: { fx: { photos: true, guest: true, remind: true } }
 };
 
 // ================= المحور 3: صيد الاحتكاك =================
@@ -484,6 +485,21 @@ const AiSim = classifySim({
   mock(s) { const m = s.m || {}; const cnt = k => Object.keys(m).filter(i => m[i] === k).length; return '<div class="sim-meters">' + SimKit.meter('🤖 الآلة وحدها', cnt('ai'), 10) + SimKit.meter('🤝 بمراجعة بشرية', cnt('mix'), 10) + SimKit.meter('🧑 الإنسان', cnt('human'), 10) + '</div>'; },
   note: 'الذكاء الاصطناعي يسرّع وينفّذ على نطاق واسع؛ والإنسان يحكم ويتحمل المسؤولية.'
 });
+
+// الحل النموذجي لكل محاكاة (يظهر للمتدربين بعد أن يكشف المدرب الإجابات)
+PatienceSim.best = { load: 1, popup: 'none', price: true, size: 'inline', taps: 2, text: 'bullets', imgs: 'many' };
+TimingSim.best = { when: 'hour', ch: 'inapp', msg: 'itemSize', freq: 2, quiet: true, dest: 'cart' };
+PersSim.best = { sig: { name: true, cat: true, item: true, size: true, city: true, match: true } };
+BeautySim.best = { banner: 40, anim: 'light', contrast: 'high', btn: 48, labels: true, tabs: 4, colors: 4 };
+PathSim.best = { keep: { home: true, pdp: true, cart: true, pay: true }, search: true };
+TrustSim.best = { t: { total: true, logos: true, returns: true, reviews: true, contact: true, verified: true, eta: true } };
+LastSim.best = { btn: 'lock', otp: 'auto', timeout: 'long', err: 'clear', fee: false, confirm: 'full', msg: true, spinner: false };
+KpiSim.best = { k: { conv: true, cartAb: true, payDone: true, aov: true, device: true }, split: 'device', period: 'month' };
+RadarSim.best = { metric: 'cr', seg: 'android', base: 'wk', thr: 10 };
+ImproveSim.best = { a: { bug: '1', guest: '1', ship: '1', search: '2', reviews: '2', redesign: '3' } };
+CheckoutSim.best = { account: 'guest', fields: 7, ship: 'early', pay: { card: true, debit: true, wallet: true, cod: true, bnpl: true }, trust: { badges: true, returns: true, contact: true }, progress: true, autofill: true, summary: true, inlineErr: true, coupon: 'collapsed', upsell: false };
+BudgetSim.best = { alloc: { meta: 1000, google: 1500, tiktok: 1000, influ: 750, market: 2750, crm: 1000, content: 0 } };
+StoreSim.best = { name: 'دار المسك', cat: 'عطور وبخور', lang: 'both', cur2: true, title: 'عطر عود طبيعي للرجال، ثبات طويل، 100 مل', price: 249, compare: 299, sku: 'MSK-OUD-100', variants: '50 مل، 100 مل', bullets: 'ثبات يدوم طوال اليوم\nعود طبيعي بدون كحول\nعبوة هدية جاهزة', img: 'both', zones: { doha: true, qatar: true, gcc: true }, shipShow: 'early', freeFrom: 300, pay: { debit: true, card: true, wallet: true, cod: true }, returns: 14, privacy: true, domain: true, licence: true, tracking: true, testOrder: true };
 
 Object.assign(SIM_TYPES, { patience: 'صبر المستخدم', gap: 'من الإعجاب إلى الشراء', hunt: 'صيد الاحتكاك', timing: 'توقيت الرسالة', pers: 'عمق التخصيص', beauty: 'الجمال مقابل السهولة', place: 'ترتيب صفحة المنتج', path: 'أقصر طريق للشراء', trust: 'مختبر الثقة', last: 'آخر عشر ثوانٍ', kpi: 'لوحة المؤشرات', radar: 'رادار الانحرافات', improve: 'مدير التحسين', ai: 'الإنسان والآلة' });
 Object.assign(SIMS, { patience: PatienceSim, gap: GapSim, hunt: HuntSim, timing: TimingSim, pers: PersSim, beauty: BeautySim, place: PlaceSim, path: PathSim, trust: TrustSim, last: LastSim, kpi: KpiSim, radar: RadarSim, improve: ImproveSim, ai: AiSim });

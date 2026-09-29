@@ -163,12 +163,20 @@ const Sims = {
   },
   html(e) {
     const S = Sims.of(e); const col = exColor(e);
-    const can = Me.isReg() && (e.mode !== 'group' || Me.group() || Me.isAdmin()); const dis = can ? '' : 'disabled';
-    const s = Sims.state(e); const key = postKey(e); const post = key ? (Store.posts[e.id] || {})[key] : null;
+    const rev = isRevealed(e); const locked = S.hidden && rev; // بعد كشف المدرب للإجابات تُقفل محاكاة التصنيف ويظهر التصحيح
+    const can = Me.isReg() && (e.mode !== 'group' || Me.group() || Me.isAdmin()) && !locked; const dis = can ? '' : 'disabled';
+    const s = Sims.state(e); if (S.hidden) s.done = rev; const key = postKey(e); const post = key ? (Store.posts[e.id] || {})[key] : null;
     return '<div class="answer-box sim-box" style="--ac:' + col + ';--acg:' + tint(col, .1) + '">' + (!Me.isReg() ? '<div class="locked-note">🔒 للمسجلين فقط — يمكنك التجربة بعد التسجيل.</div>' : e.mode === 'group' && !Me.group() && !Me.isAdmin() ? '<div class="locked-note">👆 اختر مجموعتك أولًا.</div>' : '') +
       (post ? '<div class="status-note" style="margin-bottom:6px">✅ آخر حفظ: ' + h(post.name || '') + ' · ' + ago(post.ts || 0) + ' — يمكنك التعديل والحفظ مجددًا.</div>' : '') +
-      '<div class="sim-grid"><div class="sim-form">' + S.form(s, e.id, dis) + '</div><div id="simLive-' + h(e.id) + '">' + S.live(s) + '</div></div>' +
+      '<div class="sim-grid"><div class="sim-form">' + S.form(s, e.id, dis) + '</div><div id="simLive-' + h(e.id) + '">' + S.live(s) + '</div></div>' + Sims.bestHtml(e, S, rev) +
       '<div class="save-row"><button class="btn btn-primary" data-act="sim-save" data-ex="' + h(e.id) + '" ' + dis + '>💾 حفظ النتيجة' + (e.mode === 'group' ? ' للمجموعة' : '') + '</button><button class="btn btn-ghost btn-sm" data-act="sim-reset" data-ex="' + h(e.id) + '" ' + dis + '>↺ البدء من جديد</button></div></div>';
+  },
+  // الحل النموذجي: يظهر للجميع بعد أن يكشف المدرب الإجابات (محاكيات الإعدادات؛ أما التصنيف فتصحيحه داخل النموذج نفسه)
+  bestHtml(e, S, rev) {
+    if (!rev || !S.best) return '';
+    const st = Object.assign(S.def(), JSON.parse(JSON.stringify(S.best))); const mine = Sims.state(e);
+    return '<div class="sim-best"><div class="sim-best-h">✅ الحل النموذجي <span class="muted">— كشفه المدرب</span></div><div class="sim-grid"><div class="sim-form sim-ro">' + S.form(st, e.id + '-best', 'disabled') + '</div><div>' + S.live(st) + '</div></div>' +
+      '<div class="status-note">نتيجتك الحالية: <b>' + h(S.summary(mine)) + '</b><br>نتيجة الحل النموذجي: <b>' + h(S.summary(st)) + '</b></div></div>';
   },
   refresh(exId) { const e = Content.ex(exId); if (!e) return; const box = document.getElementById('simLive-' + exId); if (box) box.innerHTML = Sims.of(e).live(Sims.state(e)); },
   set(exId, path, val) {
@@ -186,7 +194,8 @@ const Sims = {
   },
   feed(e) {
     const S = Sims.of(e); const ps = Store.posts[e.id] || {}; const myKey = Me.isReg() ? postKey(e) : null;
-    const keys = Object.keys(ps).filter(k => ps[k] && ps[k].state).sort((a, b) => (S.metric(ps[b].state) - S.metric(ps[a].state)));
+    const veil = S.hidden && !isRevealed(e) && !Admin.ok(); // نتائج التصنيف لا تظهر للمتدربين قبل الكشف
+    const keys = Object.keys(ps).filter(k => ps[k] && ps[k].state).sort((a, b) => veil ? (ps[b].ts || 0) - (ps[a].ts || 0) : (S.metric(ps[b].state) - S.metric(ps[a].state)));
     const del = k => Admin.ctl() ? '<button class="del-btn" data-act="del-post" data-ex="' + h(e.id) + '" data-k="' + h(k) + '">🗑</button>' : '';
     if (!keys.length) return '<div class="feed"><div class="feed-head"><span class="live-dot"></span><h3>' + (e.mode === 'group' ? 'مقارنة المجموعات' : 'نتائج الجميع') + '</h3></div><div class="empty">لا توجد نتائج محفوظة بعد.</div></div>';
     if (e.sim === 'budget') {
@@ -194,11 +203,11 @@ const Sims = {
         keys.map((k, i) => { const r = BudgetSim.calc(ps[k].state); return '<tr class="' + (k === myKey ? 'mine' : '') + '"><td class="num">' + (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1) + '</td><td><b>' + h(Groups.label(+k.slice(1))) + '</b><div class="muted" style="font-size:11.5px">' + CHANNELS.filter(c => +ps[k].state.alloc[c.k]).map(c => c.n.split(' ')[0] + ' ' + QAR(ps[k].state.alloc[c.k])).join(' · ') + '</div></td><td class="num">' + Math.round(r.orders) + '</td><td class="num">' + r.roas.toFixed(2) + '</td><td class="num">' + (r.cac ? QAR(r.cac) : '—') + '</td><td class="num">' + QAR(r.gross) + '</td><td class="num"><b>' + QAR(r.score) + '</b></td><td>' + Likes.btn('posts/' + e.id + '/' + k, ps[k].likes) + del(k) + '</td></tr>'; }).join('') + '</tbody></table></div></div>';
     }
     return '<div class="feed"><div class="feed-head"><span class="live-dot"></span><h3>نتائج الجميع</h3><span class="pill num">' + keys.length + '</span></div><div class="posts">' + keys.map(k => { const p = ps[k];
-      return '<div class="post ' + (k === myKey ? 'mine' : '') + '"><div class="post-head"><span class="av">' + h(initials(p.name)) + '</span><div><div class="who">' + h(p.name || '') + '</div><div class="role">' + h(p.role || '') + ' · ' + ago(p.ts || 0) + '</div></div><span class="grow"></span><span class="sim-badge num">' + (S.unit != null ? QAR(S.metric(p.state)) + S.unit : S.metric(p.state) + '%') + '</span></div><div class="post-body">' + h(S.summary(p.state)) + '</div><div class="post-foot">' + Likes.btn('posts/' + e.id + '/' + k, p.likes) + del(k) + '</div></div>'; }).join('') + '</div></div>';
+      return '<div class="post ' + (k === myKey ? 'mine' : '') + '"><div class="post-head"><span class="av">' + h(initials(p.name)) + '</span><div><div class="who">' + h(p.name || '') + '</div><div class="role">' + h(p.role || '') + ' · ' + ago(p.ts || 0) + '</div></div><span class="grow"></span>' + (veil ? '' : '<span class="sim-badge num">' + (S.unit != null ? QAR(S.metric(p.state)) + S.unit : S.metric(p.state) + '%') + '</span>') + '</div><div class="post-body">' + h(S.summary(p.state)) + '</div><div class="post-foot">' + Likes.btn('posts/' + e.id + '/' + k, p.likes) + del(k) + '</div></div>'; }).join('') + '</div></div>';
   },
   async save(exId) {
     const e = Content.ex(exId); const key = postKey(e); if (!key || !Me.isReg()) return; const S = Sims.of(e); const s = Sims.state(e); const me = Me.data;
-    if (S.needsCheck && !s.done) { UI.alert('اضغط «تحقّق من إجاباتي» أولًا، ثم احفظ النتيجة.'); return; }
+    if (S.hidden && isRevealed(e)) { UI.toast('كشف المدرب الإجابات: أُقفلت المحاكاة'); return; }
     if (e.sim === 'budget' && BudgetSim.spent(s) < BUDGET_TOTAL * 0.9) { if (!(await UI.confirm('لم توزعوا إلا ' + QAR(BudgetSim.spent(s)) + ' ر.س من الميزانية. حفظ النتيجة رغم ذلك؟', { ok: 'حفظ' }))) return; }
     const upd = { state: JSON.parse(JSON.stringify(s)), metric: S.metric(s), summary: S.summary(s), name: me.name, role: me.role || '', ts: DB.now() };
     if (e.mode === 'group' && !me.admin) { upd.group = Me.group(); upd.by = me.uid; upd['members/' + me.uid] = true; } else upd.uid = me.uid;

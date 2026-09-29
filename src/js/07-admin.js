@@ -33,24 +33,23 @@ function exSummary(e) {
   const ps = Store.posts[e.id] || {}; const keys = Object.keys(ps).filter(k => ps[k]).sort((a, b) => (ps[b].ts || 0) - (ps[a].ts || 0));
   if (!keys.length) return '<div class="summary">لا مشاركات بعد.</div>';
   const reveal = isRevealed(e);
-  return '<div class="summary"><b class="num">' + keys.length + '</b> مشاركة' + (e.format !== 'text' && e.format !== 'sim' ? ' · ' + (reveal ? '🔓 مكشوفة' : '🔒 غير مكشوفة') : '') +
+  return '<div class="summary"><b class="num">' + keys.length + '</b> مشاركة' + (e.kind !== 'survey' ? ' · ' + (reveal ? '🔓 مكشوفة' : '🔒 غير مكشوفة') : '') +
     keys.slice(0, 30).map(k => { const p = ps[k]; const who = k.charAt(0) === 'g' && e.mode === 'group' ? Groups.label(+k.slice(1)) : (p.name || 'مشارك');
       let brief = '';
       if (e.format === 'text') brief = h(String(p.text || '').slice(0, 140)) + (String(p.text || '').length > 140 ? '…' : '');
-      else if (e.format === 'sim') brief = h(p.summary || '');
+      else if (e.format === 'sim') brief = h(p.summary || '') + (p.metric != null && Sims.of(e).hidden ? ' · النتيجة <b class="num">' + h(p.metric) + '%</b>' : '');
       else { const a = ansList(p.answers, e.items.length); let sc = 0; e.items.forEach((it, i) => { const v = a[i]; if (v == null) return; if (e.format === 'mcq' ? +v === +it.answer : e.format === 'truefalse' ? ((v === true || v === 'true') === !!it.answer) : v === it.answer) sc++; }); brief = 'الصحيح: ' + sc + ' من ' + e.items.length; }
       return '<div class="it"><b>' + h(who) + ':</b><span class="grow">' + brief + '</span><button class="del-btn" data-act="del-post" data-ex="' + h(e.id) + '" data-k="' + h(k) + '" title="حذف هذه المشاركة وحدها">🗑</button></div>'; }).join('') + '</div>';
 }
 function exRow(e, o = {}) {
   const isDef = !!DEF_EX[e.id];
-  return '<div class="ex-row"><div class="live-row">' + Presence.chip(e.id) + Invite.btn(e) + '</div><div class="top"><span style="font-size:18px">' + h(e.icon || '✍️') + '</span><span class="nm">' + h(e.title) + ' ' + tags(e) + '<span class="tag fmt">' + h(FORMATS[e.format] || '') + ' · ' + (e.mode === 'group' ? 'جماعي' : 'فردي') + '</span></span>' +
+  return '<div class="ex-row"><div class="live-row">' + Presence.chip(e.id) + Invite.btn(e) + Reveal.btn(e) + '</div><div class="top"><span style="font-size:18px">' + h(e.icon || '✍️') + '</span><span class="nm">' + h(e.title) + ' ' + tags(e) + '<span class="tag fmt">' + h(FORMATS[e.format] || '') + ' · ' + (e.mode === 'group' ? 'جماعي' : 'فردي') + '</span></span>' +
     (o.kind !== 'survey' ? '<button class="btn btn-ghost btn-xs" data-act="ex-move" data-d="-1" data-id="' + h(e.id) + '" data-key="' + h(o.axis || '_acts') + '" title="تحريك لأعلى">↑</button><button class="btn btn-ghost btn-xs" data-act="ex-move" data-d="1" data-id="' + h(e.id) + '" data-key="' + h(o.axis || '_acts') + '" title="تحريك لأسفل">↓</button>' : '') +
     '<button class="btn btn-soft btn-xs" data-go="' + (o.kind === 'activity' || o.kind === 'survey' ? 'actEdit' : 'exEdit') + '" data-id="' + h(e.id) + '"' + (o.axis ? ' data-axis="' + h(o.axis) + '"' : '') + '>✏️ تعديل</button>' +
     '<button class="btn btn-ghost btn-xs" data-act="toggle-vis" data-id="' + h(e.id) + '">' + (e._hidden ? '👁 إظهار' : '🙈 إخفاء') + '</button>' +
     (o.kind !== 'survey' ? '<button class="btn btn-ghost btn-xs" data-act="copy-ex" data-id="' + h(e.id) + '">🧬 نسخ</button>' : '') +
     (isDef && e._modified ? '<button class="btn btn-ghost btn-xs" data-act="reset-ex" data-id="' + h(e.id) + '">↺ استرجاع الافتراضي</button>' : '') + (o.kind !== 'survey' ? '<button class="btn btn-danger btn-xs" data-act="delete-ex" data-id="' + h(e.id) + '">🗑 حذف التمرين</button>' : '') +
     '<button class="btn btn-danger btn-xs" data-act="clear-posts" data-id="' + h(e.id) + '">🧹 مسح المشاركات</button>' +
-    (e.format !== 'text' && e.format !== 'sim' ? '<button class="btn btn-mint btn-xs" data-act="reveal" data-id="' + h(e.id) + '">' + (isRevealed(e) ? '🔒 إخفاء الإجابات' : '🔓 كشف الإجابات الصحيحة') + '</button>' : '') +
     '</div>' + exSummary(e) + '</div>';
 }
 
