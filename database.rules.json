@@ -327,6 +327,54 @@
       "memberCounter": {
         ".write": "auth != null && newData.isNumber() && ((!data.exists() && newData.val() >= 1) || (data.exists() && newData.val() === data.val() + 1))"
       }
+    },
+    "removed": {
+      ".read": true,
+      ".write": "auth != null && root.child('admins').child(auth.uid).val() === true"
+    },
+    "invite": {
+      ".read": true,
+      ".write": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      "id": {
+        ".validate": "newData.isString() && newData.val().length <= 40"
+      },
+      "ex": {
+        ".validate": "newData.isString() && newData.val().length <= 80"
+      },
+      "title": {
+        ".validate": "newData.isString() && newData.val().length <= 200"
+      },
+      "ts": {
+        ".validate": "newData.isNumber()"
+      },
+      "$other": {
+        ".validate": false
+      }
+    },
+    "presence": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      ".write": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      "$ex": {
+        "$sid": {
+          ".write": "auth != null && auth.uid === $sid",
+          ".validate": "!newData.exists() || newData.hasChildren(['ts'])",
+          "n": {
+            ".validate": "newData.isString() && newData.val().length <= 80"
+          },
+          "u": {
+            ".validate": "newData.isString() && newData.val().length <= 40"
+          },
+          "g": {
+            ".validate": "newData.isBoolean()"
+          },
+          "ts": {
+            ".validate": "newData.isNumber()"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
     }
   }
 }

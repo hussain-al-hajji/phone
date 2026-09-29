@@ -1436,6 +1436,18 @@ html[data-theme="dark"] .banner-offline{background:#3B2A10;color:#FFD98A;border-
 @media (max-width:520px){.fix-cards{grid-template-columns:1fr}.sim-meter{grid-template-columns:100px 1fr 30px}}
 .sim-cbs.col .sim-cb{white-space:normal!important}
 
+/* ===== الأزرار العلوية حسب الدور + دخول المدرب + الحضور الحي والدعوة ===== */
+.top-actions .icon-btn{color:var(--ink-2)}.top-actions .icon-btn:hover{border-color:var(--brand);color:var(--brand)}
+.cp-btn{gap:6px}
+.trainer-door{display:flex;justify-content:center;margin-top:18px}
+.trainer-btn{width:30px;height:30px;border-radius:50%;border:1px solid transparent;background:transparent;color:var(--ink-3);opacity:.45;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:opacity .2s,border-color .2s}
+.trainer-btn:hover,.trainer-btn:focus-visible{opacity:1;border-color:var(--line)}
+.live-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px}.ex-live{margin:10px 0 0}
+.live-chip{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface-2);font-family:var(--f-ui);font-size:12.5px;color:var(--ink-3);cursor:pointer}
+.live-chip b{font-family:var(--f-ui);font-size:14px;color:var(--ink-2)}
+.live-chip .live-dot{background:#9AA3B2;animation:none}.live-chip.on{border-color:var(--ok);background:var(--ok-bg);color:#10573A}.live-chip.on b{color:#10573A}.live-chip.on .live-dot{background:var(--ok);animation:pulse 1.6s infinite}
+.invite-title{font-family:var(--f-display);font-weight:800;font-size:20px;margin:6px 0 2px}
+
 </style>
 </head>
 <body>
@@ -1587,7 +1599,7 @@ const DB = (function () {
       // تعذر تحميل مكتبة الاتصال: لا تخزين محلي ولا كتابة — القراءة تنتظر، والكتابة تُرفض برسالة واضحة
       status.lib = false;
       const fail = () => Promise.reject(new Error('تعذر تحميل مكتبة الاتصال بقاعدة البيانات'));
-      return { real: true, status, onStatus(fn) { status.listeners.push(fn); }, markReady() {}, watch() { return () => {}; }, get() { return new Promise(() => {}); }, set: fail, update: fail, remove: fail, push: fail, transaction: fail, now() { return Date.now(); } };
+      return { real: true, status, onStatus(fn) { status.listeners.push(fn); }, markReady() {}, watch() { return () => {}; }, get() { return new Promise(() => {}); }, set: fail, update: fail, remove: fail, push: fail, transaction: fail, presence: fail, unpresence: fail, now() { return Date.now(); } };
     }
     firebase.initializeApp(Object.fromEntries(Object.entries(firebaseConfig).filter(([k, v]) => v && k !== 'appCheckSiteKey')));
     // App Check يُفعَّل قبل أي استخدام للقاعدة أو الدخول، حتى تُرفق كل الطلبات بشهادة أنها من موقعنا الحقيقي
@@ -1611,6 +1623,9 @@ const DB = (function () {
       remove(path, o) { const g = guard('remove', path, null, o); if (g) return g; return track(db.ref(norm(path)).remove(), path, o); },
       push(path, v) { const g = guard('push', path); if (g) return g; const r = db.ref(norm(path)).push(); return track(r.set(clean(v)), path).then(() => r.key); },
       transaction(path, fn, o) { const g = guard('transaction', path, null, o); if (g) return g; return track(db.ref(norm(path)).transaction(fn).then(r => r.snapshot.val()), path, o); },
+      // سجل حضور مؤقت: يُحذف تلقائيًا من الخادم عند انقطاع اتصال المتصفح أو إغلاقه
+      presence(path, v) { if (!status.ready) return Promise.resolve(); const ref = db.ref(norm(path)); return ref.onDisconnect().remove().then(() => ref.set(clean(v))); },
+      unpresence(path) { const ref = db.ref(norm(path)); return ref.onDisconnect().cancel().catch(() => {}).then(() => ref.remove()); },
       now() { return Date.now() + offset; }
     };
   }
@@ -1634,6 +1649,8 @@ const DB = (function () {
   const clone = v => v == null ? null : JSON.parse(JSON.stringify(v));
   window.addEventListener('storage', e => { if (e.key === KEY) { try { tree = JSON.parse(e.newValue || '{}') || {}; } catch (er) {} notify(''); } });
   status.connected = true;
+  const presencePaths = new Set(); // تُحذف عند إغلاق التبويب (بديل onDisconnect في وضع المحاكاة)
+  window.addEventListener('pagehide', () => { presencePaths.forEach(p => setAt(p, null)); if (presencePaths.size) persist(); });
   const lguard = (op, path, obj, o) => { const p = norm(path); if (!p && op !== 'update') throw new Error('DB: ممنوع ' + op + ' على جذر القاعدة'); if (op === 'update') Object.keys(obj || {}).forEach(k => { const full = norm((p ? p + '/' : '') + k); if (!full) throw new Error('DB: مفتاح فارغ'); if (!p && full.indexOf('/') === -1 && !(o && o.allowTopLevel)) throw new Error('DB: استبدال العقدة «' + full + '» كاملة غير مسموح هنا'); }); };
   return {
     real: false, status,
@@ -1649,6 +1666,8 @@ const DB = (function () {
     remove(path, o) { lguard('remove', path, null, o); setAt(path, null); persist(); notify(path); return Promise.resolve(); },
     push(path, v) { const k = genId('k'); return this.set(norm(path) + '/' + k, v).then(() => k); },
     transaction(path, fn) { const nv = fn(clone(getAt(path))); if (nv !== undefined) { setAt(path, nv); persist(); notify(path); } return Promise.resolve(clone(getAt(path))); },
+    presence(path, v) { if (!status.ready) return Promise.resolve(); presencePaths.add(norm(path)); return this.set(path, v); },
+    unpresence(path) { presencePaths.delete(norm(path)); return this.remove(path); },
     now() { return Date.now(); }
   };
 })();
@@ -1748,6 +1767,8 @@ const ICONS = {
   calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18"/><path d="M8 3v4"/><path d="M16 3v4"/>',
   award: '<circle cx="12" cy="9" r="6"/><path d="m8.5 14-1.5 8 5-3 5 3-1.5-8"/>',
   grid: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+  logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>',
+  login: '<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/>',
   lock: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>'
 };
 const AXIS_ICON_CHOICES = ['store','truck','box','wallet','globe','clipboard','calendar','award','grid','eye','route','alert','megaphone','target','gauge','layers','file','compass','card','shield','check','chart','radar','loop','sparkles','cart','phone','bag','bolt','users','bulb','trophy','rocket','heart','star'];
@@ -2316,6 +2337,7 @@ const Scenes = (function () {
 // المصفوفة الأصلية COURSE لا تُعدَّل أبدًا؛ كل تعديل يُحفظ كتراكب منفصل.
 // ---------------------------------------------------------------------
 const Store = {
+  removed: { axes: {}, ex: {} }, presence: {}, invite: null,
   contentAxes: {}, contentEx: {}, addedAxes: {}, addedEx: {}, visibility: {}, enabled: {}, order: [],
   site: {}, groupCount: DEFAULT_GROUPS, groupNames: {}, assign: {}, users: {}, posts: {}, reveal: {},
   labTimers: {}, labAnswers: {}, broadcast: null, resetStamp: 0, registered: 0, ready: false,
@@ -2403,9 +2425,10 @@ const Content = {
   isHidden(id) { return Store.visibility && Store.visibility[id] === false; },
   isEnabled(id) { return !(Store.enabled && Store.enabled[id] === false); },
   color(a) { return AXIS_COLORS[((a && a.color) || 0) % AXIS_COLORS.length]; },
+  isRemoved(kind, id) { return !!(Store.removed && Store.removed[kind] && Store.removed[kind][id]); },
   mergeAxis(id) {
     const def = DEF_AXIS[id], added = Store.addedAxes[id];
-    if (!def && !added) return null;
+    if ((!def && !added) || Content.isRemoved('axes', id)) return null;
     let a;
     if (def) {
       const ov = Store.contentAxes[id];
@@ -2429,7 +2452,8 @@ const Content = {
   axis(id) { return Content.mergeAxis(id); },
   mergeEx(id) {
     const def = DEF_EX[id], added = Store.addedEx[id];
-    if (!def && !added) return null;
+    if ((!def && !added) || Content.isRemoved('ex', id)) return null;
+    const ax = def ? def.axis : added && added.axis; if (ax && Content.isRemoved('axes', ax)) return null;
     let e;
     if (def) { const ov = Store.contentEx[id]; e = Object.assign({}, def, ov || {}, { id, _modified: !!ov, _added: false }); }
     else e = Object.assign({ format: 'text', mode: 'individual', steps: [] }, added, { id, _added: true, _modified: false });
@@ -2561,7 +2585,8 @@ const DEFAULT_PRIVACY = {
 const Groups = {
   count() { const n = parseInt(Store.groupCount, 10); return isFinite(n) && n >= 2 ? Math.min(30, n) : DEFAULT_GROUPS; },
   list() { const out = []; for (let i = 1; i <= Groups.count(); i++) out.push(i); return out; },
-  label(n) { const nm = Store.groupNames && Store.groupNames[n]; return nm ? 'مجموعة ' + n + ' · ' + nm : 'مجموعة ' + n; },
+  label(n) { if (!(+n > 0)) return 'الإدارة'; // مفتاح مشاركة الإدارة (admin) في التمارين الجماعية
+    const nm = Store.groupNames && Store.groupNames[n]; return nm ? 'مجموعة ' + n + ' · ' + nm : 'مجموعة ' + n; },
   assignedOf(uid) { const v = Store.assign && Store.assign[uid]; return v ? +v : null; },
   membersOf(n) { return Object.keys(Store.assign || {}).filter(u => +Store.assign[u] === +n); },
   anyAssign() { return Object.keys(Store.assign || {}).length > 0; }
@@ -2592,7 +2617,18 @@ const Me = {
     if (d && !d._fromHash) Me.save(d);
     return d;
   },
+  // هوية الإدارة: المدرب يتصفح المنصة ويشارك في كل التمارين باسم «الإدارة» (هوية في الذاكرة فقط، لا تُحفظ على الجهاز
+  // ولا تُكتب في users). عند خروجه تعود هوية المتدرب المحفوظة على الجهاز إن وُجدت.
+  ADMIN_UID: 'admin',
+  sync() {
+    const adm = Admin.ok(); const cur = Me.data && Me.data.admin;
+    if (adm && !cur) { Me._stash = { data: Me.data, guest: Me.guest }; Me.data = { uid: Me.ADMIN_UID, name: 'الإدارة', role: 'المدرب', admin: true }; Me.guest = false; }
+    else if (!adm && cur) { const st = Me._stash; Me._stash = null; Me.data = st ? st.data : null; Me.guest = st ? st.guest : false; if (!st) Me.load(); }
+  },
+  isAdmin() { return !!(Me.data && Me.data.admin); },
   save(d) {
+    if (d && d.admin) { Me.data = d; return; }
+    if (Me.isAdmin()) { Me._stash = { data: d, guest: false }; return; }
     Me.data = d; Me.guest = false; const s = JSON.stringify(d);
     SafeLS.set('ec_me', s); SafeSS.set('ec_me', s); Cookie.set('ec_me', s);
     SafeLS.del('ec_guest'); SafeSS.del('ec_guest');
@@ -2607,7 +2643,7 @@ const Me = {
   uid() { return Me.data ? Me.data.uid : null; },
   isReg() { return !!(Me.data && Me.data.uid); },
   group() { return Me.data && Me.data.group ? +Me.data.group : null; },
-  setGroup(n) { if (!Me.data) return; Me.data.group = n; Me.save(Me.data); DB.update('users/' + Me.data.uid, { group: n, gkey: 'g' + n }); }
+  setGroup(n) { if (!Me.data) return; if (Me.isAdmin()) { UI.toast('تشارك الإدارة باسمها دون الانضمام لمجموعة'); return; } Me.data.group = n; Me.save(Me.data); DB.update('users/' + Me.data.uid, { group: n, gkey: 'g' + n }); }
 };
 
 // ---------- الإنجاز والأوسمة ----------
@@ -2727,8 +2763,8 @@ const UIState = { deck: {}, openAcc: new Set(), openDrop: new Set(), draft: {}, 
 const AUTH = { enabled: false, resolved: true, user: null, isAdmin: false };
 const Admin = {
   ok() { return AUTH.enabled ? AUTH.isAdmin : SafeSS.get('ec_admin') === '1'; },
-  preview() { return SafeSS.get('ec_preview') === '1'; },
-  ctl() { return Admin.ok() && !Admin.preview(); }
+  preview() { return false; }, // أُلغي وضع «المعاينة كمتدرب»: المدرب يتصفح المنصة بحسابه مع إتاحة كل التمارين
+  ctl() { return Admin.ok(); }
 };
 
 const Router = {
@@ -2768,15 +2804,18 @@ const Layout = {
     return '<header class="topbar"><div class="wrap">' +
       // الشعار يقود دائمًا إلى الصفحة التعريفية؛ العنوان الكامل يظهر فيها فقط، وفي بقية الصفحات كلمة «الواجهة»
       '<div class="brand' + (!HAS_LANDING || App.onLanding ? '' : ' brand-min') + '" data-go="' + (HAS_LANDING ? 'landing' : 'home') + '" title="' + (HAS_LANDING ? 'الصفحة التعريفية بالبرنامج' : 'الرئيسية') + '" role="link" tabindex="0"><div class="brand-logo">' + iconSvg('store', 22, '#fff', 2.2) + '</div><div class="brand-text">' + (!HAS_LANDING || App.onLanding ? '<div class="brand-title" id="brandTitle">' + h(s.headerTitle) + '</div><div class="brand-sub">' + h(s.headerSub) + '</div>' : '<div class="brand-title brand-short">الواجهة</div>') + '</div></div>' +
-      '<div class="top-actions">' +
-      (me ? '<button class="user-chip" data-go="account" title="حسابي — ' + h(me.name) + '"><span class="av">' + iconSvg('user', 16, '#fff') + '</span><span class="uc-txt"><span class="nm">' + h(String(me.name || '').trim().split(/\s+/)[0]) + '</span><span class="uc-sub">حسابي</span></span></button>' : (Me.guest ? '<span class="pill">👀 زائر</span>' : '')) +
-      (!me && !Me.guest ? (!App.onLanding ? '' : '<button class="btn btn-primary btn-sm top-cta" data-act="open-login"><span class="cta-l">الدخول للمنصة التعليمية</span><span class="cta-s">الدخول</span> <span class="lp-arrow">←</span></button>') :
-        (App.onLanding ? '<button class="btn btn-primary btn-sm top-cta" data-act="lp-enter"><span class="cta-l">الدخول للمنصة التعليمية</span><span class="cta-s">المنصة</span> <span class="lp-arrow">←</span></button>' : '') +
-        '<button class="btn btn-ghost btn-sm" data-act="switch-user" title="تسجيل مستخدم جديد (يعيدك إلى الصفحة التعريفية)">' + iconSvg('users', 16) + '<span class="lbl">مستخدم جديد</span></button>') +
-      '<button class="btn btn-ghost btn-sm notranslate" translate="no" data-act="prefs" title="إعدادات العرض: الوضع الليلي وحجم الخط والتباين" aria-label="إعدادات العرض">Aa</button>' +
-      Translate.button() +
-      '<button class="icon-btn" data-act="admin-enter" title="لوحة الإدارة">' + iconSvg('gear', 18) + '</button>' +
+      '<div class="top-actions">' + Layout.actions() +
       '</div></div></header>';
+  },
+  // أزرار أعلى الصفحة حسب الدور: المدرب (لوحة التحكم)، المتدرب (حسابي)، الزائر (تسجيل دخول) — والباقي أيقونات بلا نص
+  actions() {
+    const me = Me.data; const onLogin = !me && !Me.guest && !Admin.ok();
+    const aa = '<button class="icon-btn notranslate" translate="no" data-act="prefs" title="إعدادات العرض: الوضع الليلي وحجم الخط والتباين" aria-label="إعدادات العرض"><b style="font-family:var(--f-ui);font-size:14px">Aa</b></button>';
+    const out = '<button class="icon-btn" data-act="' + (Admin.ok() ? 'admin-exit' : 'logout') + '" title="تسجيل الخروج" aria-label="تسجيل الخروج">' + iconSvg('logout', 18) + '</button>';
+    if (Admin.ok()) return '<button class="btn btn-primary btn-sm cp-btn" data-go="admin" title="لوحة التحكم">' + iconSvg('gear', 16, '#fff') + '<span class="lbl">لوحة التحكم</span></button>' + Translate.button() + aa + out;
+    if (me) return '<button class="user-chip" data-go="account" title="حسابي — ' + h(me.name) + '"><span class="av">' + iconSvg('user', 16, '#fff') + '</span><span class="uc-txt"><span class="nm">' + h(String(me.name || '').trim().split(/\s+/)[0]) + '</span><span class="uc-sub">حسابي</span></span></button>' + Translate.button() + aa + out;
+    if (Me.guest) return Translate.button() + aa + '<button class="btn btn-primary btn-sm" data-act="guest-login" title="تسجيل الدخول">' + iconSvg('login', 16, '#fff') + '<span class="lbl">تسجيل دخول</span></button>';
+    return onLogin && App.onLanding ? Translate.button() + aa + '<button class="btn btn-primary btn-sm top-cta" data-act="open-login"><span class="cta-l">الدخول للمنصة التعليمية</span><span class="cta-s">الدخول</span> <span class="lp-arrow">←</span></button>' : Translate.button() + aa;
   },
   banners() {
     let out = '';
@@ -2839,7 +2878,7 @@ try { window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change
 const Translate = {
   LANGS: [['en', 'English'], ['fr', 'Français'], ['ur', 'اردو'], ['hi', 'हिन्दी'], ['tl', 'Filipino'], ['ml', 'മലയാളം'], ['es', 'Español'], ['tr', 'Türkçe']],
   cur() { const m = (Cookie.get('googtrans') || '').match(/^\/ar\/([a-zA-Z-]+)$/); return m ? m[1] : 'ar'; },
-  button() { const c = Translate.cur(); return '<button class="btn btn-ghost btn-sm notranslate" translate="no" data-act="translate" title="ترجمة آلية للمحتوى عبر Google Translate">🌐<span class="lbl">' + (c === 'ar' ? 'ترجمة' : 'العربية') + '</span></button>'; },
+  button() { const c = Translate.cur(); return '<button class="icon-btn notranslate" translate="no" data-act="translate" title="' + (c === 'ar' ? 'ترجمة آلية للمحتوى عبر Google Translate' : 'العودة إلى العربية') + '" aria-label="ترجمة">' + iconSvg('globe', 18) + '</button>'; },
   load() {
     if (Translate._loaded) return; Translate._loaded = true;
     if (!document.getElementById('gt_el')) { const d = document.createElement('div'); d.id = 'gt_el'; d.style.display = 'none'; document.body.appendChild(d); }
@@ -3433,7 +3472,7 @@ const DEFAULT_STEPS = {
   text: ['اقرأ الموقف جيدًا.', 'اكتب إجابتك في الصندوق.', 'اضغط «حفظ» وتابع مشاركات زملائك مباشرة.']
 };
 function exColor(e) { const ax = Content.axisOfEx(e.id); const a = ax && Content.axis(ax); return a ? Content.color(a) : (e.kind === 'survey' ? '#F58220' : '#F58220'); }
-function postKey(e) { if (e.mode === 'group') { const g = Me.group(); return g ? 'g' + g : null; } return Me.uid(); }
+function postKey(e) { if (Me.isAdmin()) return Me.ADMIN_UID; if (e.mode === 'group') { const g = Me.group(); return g ? 'g' + g : null; } return Me.uid(); }
 function isRevealed(e) { return !!(Store.reveal && Store.reveal[e.id]); }
 function bankOf(e) { // بنك كلمات بترتيب ثابت مخلوط حسب معرّف التمرين
   const words = e.items.map(i => i.answer); let s = 0; for (const ch of e.id) s = (s * 33 + ch.charCodeAt(0)) % 100003;
@@ -3442,6 +3481,7 @@ function bankOf(e) { // بنك كلمات بترتيب ثابت مخلوط حس�
 const LETTERS = ['أ', 'ب', 'ج', 'د', 'هـ', 'و', 'ز', 'ح'];
 
 function groupPickerHtml(e, o = {}) {
+  if (Me.isAdmin()) return '<div class="group-picker"><div class="assign-hint" style="margin-top:0">🛡️ أنت تتصفح بحساب الإدارة: مشاركتك تُحفظ باسم <b>«الإدارة»</b> دون الانضمام لأي مجموعة، ولا تمس إجابات المجموعات.</div></div>';
   const my = Me.group(); const assigned = Me.uid() ? Groups.assignedOf(Me.uid()) : null;
   let out = '<div class="group-picker"><div class="ex-block-lbl" style="font-family:var(--f-display);font-weight:700">👥 اختر مجموعتك</div>' + (o.note ? '<div class="muted" style="font-family:var(--f-ui);font-size:13px">' + o.note + '</div>' : '');
   if (assigned) out += '<div class="assign-hint">📌 عيّنك المدرّب في <b>' + h(Groups.label(assigned)) + '</b> — اختر مجموعتك المخصّصة لتجنّب الخطأ.</div>';
@@ -3543,11 +3583,11 @@ function answerBoxHtml(e) {
   }
   const post = (Store.posts[e.id] || {})[key]; const editing = !!UIState.editing[e.id];
   if (e.format === 'text') {
-    if (post && !editing) return '<div class="answer-box"><div class="row" style="margin-bottom:8px"><b style="font-family:var(--f-display)">✅ ' + (isGroup ? 'إجابة ' + h(Groups.label(Me.group())) : 'إجابتك المحفوظة') + '</b><span class="grow"></span><button class="btn btn-soft btn-sm" data-act="edit-ans" data-ex="' + h(e.id) + '">✏️ تعديل</button></div><div class="answer-view">' + h(post.text) + '</div></div>';
+    if (post && !editing) return '<div class="answer-box"><div class="row" style="margin-bottom:8px"><b style="font-family:var(--f-display)">✅ ' + (isGroup && !Me.isAdmin() ? 'إجابة ' + h(Groups.label(Me.group())) : 'إجابتك المحفوظة') + '</b><span class="grow"></span><button class="btn btn-soft btn-sm" data-act="edit-ans" data-ex="' + h(e.id) + '">✏️ تعديل</button></div><div class="answer-view">' + h(post.text) + '</div></div>';
     return '<div class="answer-box"><textarea data-keep="ans-' + h(e.id) + '" id="ans-' + h(e.id) + '" placeholder="' + (isGroup ? 'اكتب إجابة مجموعتك هنا…' : 'اكتب إجابتك هنا…') + '">' + (editing && post ? h(post.text) : '') + '</textarea><div class="save-row"><button class="btn btn-primary" data-act="save-text" data-ex="' + h(e.id) + '">💾 حفظ' + (isGroup ? ' إجابة المجموعة' : '') + '</button>' + (editing ? '<button class="btn btn-ghost" data-act="cancel-edit" data-ex="' + h(e.id) + '">إلغاء</button>' : '') + '<span class="status-note">تظهر إجابتك فورًا في مشاركات الجميع.</span></div></div>';
   }
   const active = !post || editing;
-  return '<div class="answer-box" style="--ac:' + col + ';--acg:' + tint(col, .1) + '">' + (post && !editing ? '<div class="row" style="margin-bottom:6px"><b style="font-family:var(--f-display)">✅ ' + (isGroup ? 'أُرسلت إجابات ' + h(Groups.label(Me.group())) : 'تم حفظ إجاباتك') + '</b><span class="grow"></span><button class="btn btn-soft btn-sm" data-act="edit-ans" data-ex="' + h(e.id) + '">✏️ تعديل</button></div>' : '') +
+  return '<div class="answer-box" style="--ac:' + col + ';--acg:' + tint(col, .1) + '">' + (post && !editing ? '<div class="row" style="margin-bottom:6px"><b style="font-family:var(--f-display)">✅ ' + (isGroup && !Me.isAdmin() ? 'أُرسلت إجابات ' + h(Groups.label(Me.group())) : 'تم حفظ إجاباتك') + '</b><span class="grow"></span><button class="btn btn-soft btn-sm" data-act="edit-ans" data-ex="' + h(e.id) + '">✏️ تعديل</button></div>' : '') +
     interactiveHtml(e, post, true, editing) +
     (active ? '<div class="save-row"><button class="btn btn-primary" data-act="save-inter" data-ex="' + h(e.id) + '">' + (isGroup ? '📤 حفظ وإرسال إجابات المجموعة' : '💾 حفظ الإجابات') + '</button>' + (editing ? '<button class="btn btn-ghost" data-act="cancel-edit" data-ex="' + h(e.id) + '">إلغاء</button>' : '') + '</div>' : '') + '</div>';
 }
@@ -3585,7 +3625,8 @@ Views.ex = {
     const col = exColor(e); const isSurvey = e.kind === 'survey';
     let out = '<div style="--ac:' + col + ';--acg:' + tint(col, .1) + '">' + Layout.crumbs(a ? '<span class="crumb-tag">' + h(a.title) + '</span>' : '<span class="crumb-tag">' + (isSurvey ? 'ختام البرنامج' : 'أنشطة') + '</span>') +
       (e.image ? '<img class="ex-img" src=\"' + imgSrc(e.image) + '\" alt="">' : '') +
-      '<div class="ex-head"><div class="ico">' + h(e.icon || '✍️') + '</div><div><h1>' + h(e.title) + '</h1><div class="row" style="margin-top:4px"><span class="pill">' + (e.mode === 'group' ? '👥 جماعي' : '👤 فردي') + '</span>' + (e.format !== 'text' ? '<span class="pill">' + h(FORMATS[e.format]) + '</span>' : '') + '</div></div></div>';
+      '<div class="ex-head"><div class="ico">' + h(e.icon || '✍️') + '</div><div><h1>' + h(e.title) + '</h1><div class="row" style="margin-top:4px"><span class="pill">' + (e.mode === 'group' ? '👥 جماعي' : '👤 فردي') + '</span>' + (e.format !== 'text' ? '<span class="pill">' + h(FORMATS[e.format]) + '</span>' : '') + '</div></div></div>' +
+      (Admin.ok() ? '<div class="live-row ex-live">' + Presence.chip(e.id) + Invite.btn(e) + '</div>' : '');
     if (isSurvey) {
       out += '<div class="ex-block task"><div class="lbl">📝 قيّم تجربتك</div>' + richHtml(e.task) + '</div>' + '<div id="ansZone">' + surveyFormHtml(e) + '</div><div id="feedZone">' + surveyFeedHtml(e) + '</div></div>';
       return out;
@@ -3957,9 +3998,9 @@ const Sims = {
   },
   html(e) {
     const S = Sims.of(e); const col = exColor(e);
-    const can = Me.isReg() && (e.mode !== 'group' || Me.group()); const dis = can ? '' : 'disabled';
+    const can = Me.isReg() && (e.mode !== 'group' || Me.group() || Me.isAdmin()); const dis = can ? '' : 'disabled';
     const s = Sims.state(e); const key = postKey(e); const post = key ? (Store.posts[e.id] || {})[key] : null;
-    return '<div class="answer-box sim-box" style="--ac:' + col + ';--acg:' + tint(col, .1) + '">' + (!Me.isReg() ? '<div class="locked-note">🔒 للمسجلين فقط — يمكنك التجربة بعد التسجيل.</div>' : e.mode === 'group' && !Me.group() ? '<div class="locked-note">👆 اختر مجموعتك أولًا.</div>' : '') +
+    return '<div class="answer-box sim-box" style="--ac:' + col + ';--acg:' + tint(col, .1) + '">' + (!Me.isReg() ? '<div class="locked-note">🔒 للمسجلين فقط — يمكنك التجربة بعد التسجيل.</div>' : e.mode === 'group' && !Me.group() && !Me.isAdmin() ? '<div class="locked-note">👆 اختر مجموعتك أولًا.</div>' : '') +
       (post ? '<div class="status-note" style="margin-bottom:6px">✅ آخر حفظ: ' + h(post.name || '') + ' · ' + ago(post.ts || 0) + ' — يمكنك التعديل والحفظ مجددًا.</div>' : '') +
       '<div class="sim-grid"><div class="sim-form">' + S.form(s, e.id, dis) + '</div><div id="simLive-' + h(e.id) + '">' + S.live(s) + '</div></div>' +
       '<div class="save-row"><button class="btn btn-primary" data-act="sim-save" data-ex="' + h(e.id) + '" ' + dis + '>💾 حفظ النتيجة' + (e.mode === 'group' ? ' للمجموعة' : '') + '</button><button class="btn btn-ghost btn-sm" data-act="sim-reset" data-ex="' + h(e.id) + '" ' + dis + '>↺ البدء من جديد</button></div></div>';
@@ -3995,7 +4036,7 @@ const Sims = {
     if (S.needsCheck && !s.done) { UI.alert('اضغط «تحقّق من إجاباتي» أولًا، ثم احفظ النتيجة.'); return; }
     if (e.sim === 'budget' && BudgetSim.spent(s) < BUDGET_TOTAL * 0.9) { if (!(await UI.confirm('لم توزعوا إلا ' + QAR(BudgetSim.spent(s)) + ' ر.س من الميزانية. حفظ النتيجة رغم ذلك؟', { ok: 'حفظ' }))) return; }
     const upd = { state: JSON.parse(JSON.stringify(s)), metric: S.metric(s), summary: S.summary(s), name: me.name, role: me.role || '', ts: DB.now() };
-    if (e.mode === 'group') { upd.group = Me.group(); upd.by = me.uid; upd['members/' + me.uid] = true; } else upd.uid = me.uid;
+    if (e.mode === 'group' && !me.admin) { upd.group = Me.group(); upd.by = me.uid; upd['members/' + me.uid] = true; } else upd.uid = me.uid;
     await DB.update('posts/' + exId + '/' + key, upd); UI.toast('✅ حُفظت النتيجة'); App.render();
   }
 };
@@ -4386,7 +4427,7 @@ function loginFormHtml() {
 }
 // صفحة دخول مستقلة للمشاريع التي لا تستخدم الصفحة التعريفية (HAS_LANDING = false)
 Views.login = {
-  html() { return '<div class="login-page">' + loginFormHtml().replace(/<button class="lpop-x"[^>]*>[^<]*<\/button>/, '') + '</div>'; },
+  html() { return '<div class="login-page">' + loginFormHtml().replace(/<button class="lpop-x"[^>]*>[^<]*<\/button>/, '') + '<div class="trainer-door"><button class="trainer-btn" data-act="admin-enter" title="دخول المدرب" aria-label="دخول المدرب">' + iconSvg('lock', 14) + '</button></div></div>'; },
   after(root) { const first = $('.login-page input', root); if (first && !Views.login._focused) { Views.login._focused = true; try { first.focus({ preventScroll: true }); } catch (e) {} } }
 };
 const LoginModal = {
@@ -4895,6 +4936,87 @@ Object.assign(SIM_TYPES, { patience: 'صبر المستخدم', gap: 'من ال�
 Object.assign(SIMS, { patience: PatienceSim, gap: GapSim, hunt: HuntSim, timing: TimingSim, pers: PersSim, beauty: BeautySim, place: PlaceSim, path: PathSim, trust: TrustSim, last: LastSim, kpi: KpiSim, radar: RadarSim, improve: ImproveSim, ai: AiSim });
 
 
+/* ===== 06g-live.js ===== */
+// ---------------------------------------------------------------------
+// الحضور الحي على صفحات التمارين + دعوة المتدربين إلى تمرين
+// - كل متصفح (متدرب أو زائر) يسجل وجوده في presence/<التمرين>/<معرّف جلسته> ما دام على صفحة التمرين،
+//   ويُحذف السجل تلقائيًا عند مغادرة الصفحة أو إغلاقها أو انقطاع الاتصال (onDisconnect). لا يُحفظ أي عدد تراكمي.
+// - المدرب وحده يقرأ هذه العقدة، ويرى العدد في صفحة التمرين وفي لوحة التحكم، وبالضغط تظهر الأسماء.
+// - الدعوة: عقدة واحدة invite يكتبها المدرب؛ الدعوة الجديدة تحل محل السابقة تلقائيًا.
+// ---------------------------------------------------------------------
+const PRESENCE_STALE = 6 * 3600000; // سجل أقدم من 6 ساعات يُعد متروكًا (احتياط إن لم يعمل الحذف التلقائي)
+const Presence = {
+  cur: null, curSid: null, curSig: '',
+  sid() {
+    const a = typeof authUid === 'function' ? authUid() : null; if (a) return a;
+    let s = SafeSS.get('ec_psid'); if (!s) { s = genId('s'); SafeSS.set('ec_psid', s); } return s;
+  },
+  target() { return App.dataReady && Router.cur.view === 'ex' && !Admin.ok() && (Me.isReg() || Me.guest) && Content.ex(Router.cur.id) ? Router.cur.id : null; },
+  payload() { const reg = Me.isReg(); return { n: reg ? String(Me.data.name || '').slice(0, 80) : '', u: reg ? String(Me.uid()).slice(0, 40) : '', g: !reg, ts: DB.now() }; },
+  path() { return 'presence/' + Presence.cur + '/' + Presence.curSid; },
+  update() {
+    const t = Presence.target(); const sid = Presence.sid(); const pl = Presence.payload(); const sig = t + '|' + sid + '|' + pl.u + '|' + pl.n;
+    if (sig === Presence.curSig) return;
+    if (Presence.cur && (Presence.cur !== t || Presence.curSid !== sid)) Presence.leave();
+    Presence.curSig = sig; if (!t) return;
+    Presence.cur = t; Presence.curSid = sid;
+    DB.presence(Presence.path(), pl).catch(() => {});
+  },
+  leave() {
+    if (!Presence.cur) { Presence.curSig = ''; return; }
+    const p = Presence.path(); Presence.cur = null; Presence.curSid = null; Presence.curSig = '';
+    DB.unpresence(p).catch(() => {});
+  },
+  // إعادة التسجيل بعد عودة الاتصال (الخادم يحذف السجل عند الانقطاع)
+  resync() { if (Presence.cur) DB.presence(Presence.path(), Presence.payload()).catch(() => {}); },
+  list(ex) { const pr = (Store.presence || {})[ex] || {}; const now = DB.now(); return Object.keys(pr).map(k => pr[k]).filter(p => p && typeof p === 'object' && now - (+p.ts || 0) < PRESENCE_STALE); },
+  counts(ex) { const l = Presence.list(ex); const names = []; const seen = {}; let guests = 0; l.forEach(p => { if (p.g || !p.u) guests++; else if (!seen[p.u]) { seen[p.u] = 1; names.push(p.n || 'متدرب'); } }); return { total: names.length + guests, names, guests }; },
+  chip(ex) {
+    if (!Admin.ok()) return ''; const c = Presence.counts(ex);
+    return '<button class="live-chip ' + (c.total ? 'on' : '') + '" data-act="presence-show" data-ex="' + h(ex) + '" title="من على صفحة هذا التمرين الآن"><span class="live-dot"></span><b class="num">' + c.total + '</b><span>على الصفحة الآن</span></button>';
+  },
+  show(ex) {
+    const body = () => { const c = Presence.counts(ex);
+      return '<h3>👥 على صفحة «' + h(Content.exTitle(ex)) + '» الآن</h3>' + (c.total ? '<div class="people-list">' + c.names.sort((a, b) => a.localeCompare(b, 'ar')).map(n => '<div class="person"><span class="live-dot"></span><span class="nm">' + h(n) + '</span></div>').join('') + (c.guests ? '<div class="person muted"><span class="nm">(<span class="num">' + c.guests + '</span>) زائر</span></div>' : '') + '</div>' : '<div class="empty">لا أحد على هذه الصفحة الآن.</div>') +
+        '<p class="muted" style="font-family:var(--f-ui);font-size:12.5px">العدد الحالي فقط، ويتحدث تلقائيًا.</p><div class="actions">' + Invite.btn(Content.ex(ex) || { id: ex }) + '<button class="btn btn-ghost" data-x>إغلاق</button></div>'; };
+    const m = UI.modal(body(), { onClose: () => { Presence._modal = null; } }); Presence._modal = { m, ex, body };
+    m.el.addEventListener('click', ev => { if (ev.target.closest('[data-x]')) m.close(); });
+  },
+  refreshModal() { const pm = Presence._modal; if (pm && pm.m.el.isConnected) pm.m.el.innerHTML = pm.body(); }
+};
+
+const INVITE_TTL = 3 * 3600000; // لا تظهر دعوة أقدم من 3 ساعات لمن يفتح المنصة لاحقًا
+const Invite = {
+  m: null, shownId: null,
+  active(exId) { const iv = Store.invite; return !!(iv && iv.id && iv.ex === exId); },
+  btn(e) {
+    if (!Admin.ok() || !e) return ''; const on = Invite.active(e.id);
+    return '<button class="btn btn-xs ' + (on ? 'btn-mint' : 'btn-primary') + '" data-act="' + (on ? 'invite-cancel' : 'invite-send') + '" data-id="' + h(e.id) + '" title="' + (on ? 'الدعوة ظاهرة للمتدربين الآن — اضغط لإلغائها' : 'نافذة تدعو المتدربين إلى هذا التمرين (تحل محل أي دعوة سابقة)') + '">📣 ' + (on ? 'مدعوون الآن · إلغاء' : 'دعوة') + '</button>';
+  },
+  async send(exId) {
+    const e = Content.ex(exId); if (!e) return;
+    await DB.set('invite', { id: genId('i'), ex: exId, title: String(e.title || '').slice(0, 200), ts: DB.now() });
+    UI.toast('📣 أُرسلت الدعوة إلى «' + e.title + '»');
+  },
+  async cancel() { await DB.remove('invite'); UI.toast('أُلغيت الدعوة'); },
+  close() { if (Invite.m) { const m = Invite.m; Invite.m = null; m.close(); } },
+  seen(id) { SafeLS.set('ec_inv_seen', id); },
+  check() {
+    if (!App.dataReady) return;
+    const iv = Store.invite;
+    if (!iv || !iv.id || Admin.ok() || !Me.isReg() || Me.isAdmin() || !Content.ex(iv.ex) || DB.now() - (+iv.ts || 0) > INVITE_TTL || SafeLS.get('ec_inv_seen') === iv.id) { Invite.close(); return; }
+    if (Router.cur.view === 'ex' && Router.cur.id === iv.ex) { Invite.seen(iv.id); Invite.close(); return; }
+    if (Invite.shownId === iv.id && Invite.m) return;
+    Invite.close(); Invite.shownId = iv.id;
+    const e = Content.ex(iv.ex); const ax = Content.axisOfEx(iv.ex); const a = ax ? Content.axis(ax) : null;
+    const m = Invite.m = UI.modal('<div class="center invite-pop"><div style="font-size:46px">📣</div><h3>دعوة من المدرّب</h3><p class="muted" style="font-family:var(--f-ui);margin:0">انضم الآن إلى</p><div class="invite-title">' + h(e.icon || '✍️') + ' ' + h(e.title) + '</div>' + (a ? '<div class="muted" style="font-family:var(--f-ui);font-size:13px">' + h(a.title) + '</div>' : '') + '</div><div class="actions" style="justify-content:center"><button class="btn btn-primary" data-go-inv>انتقل إلى التمرين ←</button><button class="btn btn-ghost" data-x>إغلاق</button></div>',
+      { onClose: () => { if (Invite.m === m) { Invite.m = null; Invite.seen(iv.id); } } });
+    $('[data-go-inv]', m.el).onclick = () => { Invite.seen(iv.id); Invite.close(); Router.go('ex', { id: iv.ex }); };
+    $('[data-x]', m.el).onclick = () => { Invite.seen(iv.id); Invite.close(); };
+  }
+};
+
+
 /* ===== 07-admin.js ===== */
 // ---------------------------------------------------------------------
 // لوحة الأدمن — شاشة واحدة متصلة + نماذج الإنشاء/التعديل
@@ -4917,7 +5039,7 @@ const Bell = {
   }
 };
 function adminHeader(title) {
-  return '<div class="admin-top"><h1>' + h(title) + '</h1>' + Bell.html() + '<button class="btn btn-primary btn-sm" data-go="present">🎤 وضع العرض</button><button class="btn btn-ghost btn-sm" data-go="home">🌐 عرض الموقع</button><button class="btn btn-danger btn-sm" data-act="admin-exit">خروج من الإدارة</button></div>';
+  return '<div class="admin-top"><h1>' + h(title) + '</h1>' + Bell.html() + '<button class="btn btn-primary btn-sm" data-go="present">🎤 وضع العرض</button><button class="btn btn-ghost btn-sm" data-go="home" title="تصفح الواجهة التعليمية بحساب الإدارة مع إتاحة كل التمارين">🌐 عرض المنصة</button><button class="btn btn-danger btn-sm" data-act="admin-exit">خروج من الإدارة</button></div>';
 }
 function band(title, color, extra = '') { return '<div class="admin-band" style="--bc:' + color + '"><span class="bar"></span><h2>' + h(title) + '</h2><span class="grow"></span>' + extra + '</div>'; }
 function tool(key, icon, color, title, body, foot, cls = '') {
@@ -4941,29 +5063,33 @@ function exSummary(e) {
 }
 function exRow(e, o = {}) {
   const isDef = !!DEF_EX[e.id];
-  return '<div class="ex-row"><div class="top"><span style="font-size:18px">' + h(e.icon || '✍️') + '</span><span class="nm">' + h(e.title) + ' ' + tags(e) + '<span class="tag fmt">' + h(FORMATS[e.format] || '') + ' · ' + (e.mode === 'group' ? 'جماعي' : 'فردي') + '</span></span>' +
+  return '<div class="ex-row"><div class="live-row">' + Presence.chip(e.id) + Invite.btn(e) + '</div><div class="top"><span style="font-size:18px">' + h(e.icon || '✍️') + '</span><span class="nm">' + h(e.title) + ' ' + tags(e) + '<span class="tag fmt">' + h(FORMATS[e.format] || '') + ' · ' + (e.mode === 'group' ? 'جماعي' : 'فردي') + '</span></span>' +
     (o.kind !== 'survey' ? '<button class="btn btn-ghost btn-xs" data-act="ex-move" data-d="-1" data-id="' + h(e.id) + '" data-key="' + h(o.axis || '_acts') + '" title="تحريك لأعلى">↑</button><button class="btn btn-ghost btn-xs" data-act="ex-move" data-d="1" data-id="' + h(e.id) + '" data-key="' + h(o.axis || '_acts') + '" title="تحريك لأسفل">↓</button>' : '') +
     '<button class="btn btn-soft btn-xs" data-go="' + (o.kind === 'activity' || o.kind === 'survey' ? 'actEdit' : 'exEdit') + '" data-id="' + h(e.id) + '"' + (o.axis ? ' data-axis="' + h(o.axis) + '"' : '') + '>✏️ تعديل</button>' +
     '<button class="btn btn-ghost btn-xs" data-act="toggle-vis" data-id="' + h(e.id) + '">' + (e._hidden ? '👁 إظهار' : '🙈 إخفاء') + '</button>' +
     (o.kind !== 'survey' ? '<button class="btn btn-ghost btn-xs" data-act="copy-ex" data-id="' + h(e.id) + '">🧬 نسخ</button>' : '') +
-    (isDef ? (e._modified ? '<button class="btn btn-ghost btn-xs" data-act="reset-ex" data-id="' + h(e.id) + '">↺ استرجاع الافتراضي</button>' : '') : '<button class="btn btn-danger btn-xs" data-act="delete-ex" data-id="' + h(e.id) + '">🗑 حذف نهائي</button>') +
+    (isDef && e._modified ? '<button class="btn btn-ghost btn-xs" data-act="reset-ex" data-id="' + h(e.id) + '">↺ استرجاع الافتراضي</button>' : '') + (o.kind !== 'survey' ? '<button class="btn btn-danger btn-xs" data-act="delete-ex" data-id="' + h(e.id) + '">🗑 حذف التمرين</button>' : '') +
     '<button class="btn btn-danger btn-xs" data-act="clear-posts" data-id="' + h(e.id) + '">🧹 مسح المشاركات</button>' +
     (e.format !== 'text' && e.format !== 'sim' ? '<button class="btn btn-mint btn-xs" data-act="reveal" data-id="' + h(e.id) + '">' + (isRevealed(e) ? '🔒 إخفاء الإجابات' : '🔓 كشف الإجابات الصحيحة') + '</button>' : '') +
     '</div>' + exSummary(e) + '</div>';
 }
 
 Views.admin = {
+  // المحاور والتمارين الأصلية المحذوفة: تبقى قابلة للاسترجاع (المشاركات حُذفت نهائيًا عند الحذف)
+  removedBtn() { const r = Store.removed || {}; const n = Object.keys(r.axes || {}).length + Object.keys(r.ex || {}).length; return n ? '<button class="btn btn-ghost btn-sm" data-act="drop" data-k="removed">🗑 المحذوفات (<span class="num">' + n + '</span>)</button>' : ''; },
+  removedList() {
+    const r = Store.removed || {}; const row = (kind, id, title) => '<div class="person"><span class="nm">' + h(title) + '</span><span class="muted">' + (kind === 'axes' ? 'محور' : 'تمرين') + '</span><button class="btn btn-soft btn-xs" data-act="restore-removed" data-kind="' + kind + '" data-id="' + h(id) + '">↺ استرجاع</button></div>';
+    return '<div class="tool-drop" data-drop="removed"><div class="people-list">' + Object.keys(r.axes || {}).filter(id => DEF_AXIS[id]).map(id => row('axes', id, DEF_AXIS[id].title)).join('') + Object.keys(r.ex || {}).filter(id => DEF_EX[id]).map(id => row('ex', id, DEF_EX[id].title)).join('') + '</div></div>';
+  },
   html() {
     const users = Store.users || {}; const uids = Object.keys(users).sort((a, b) => (users[a].ts || 0) - (users[b].ts || 0));
     const ach = Progress.achievers(); const s = Content.site(); const pdf = Content.pdf();
     let out = ''; const blocks = {}; let curId = null; const B = id => { if (curId) blocks[curId] = (blocks[curId] || '') + out; out = ''; curId = id; };
     B('users');
     out += tool('users', '👥', '#0093A8', 'المسجّلون', '<div class="bigno num">' + uids.length + '</div>اسم مسجّل في قاعدة البيانات', '<button class="btn btn-soft btn-xs" data-act="drop" data-k="users">' + (UIState.openDrop.has('users') ? 'إخفاء' : 'عرض') + ' القائمة</button><button class="btn btn-danger btn-xs" data-act="clear-names">مسح أسماء المسجّلين فقط</button>');
-    out += drop('users', '<div class="field"><input data-keep="users-search" data-filter=".person" placeholder="🔍 بحث بالاسم…"></div><div class="people-list">' + (uids.length ? uids.map(u => '<div class="person" data-name="' + h((users[u].name || '').toLowerCase()) + '"><span class="nm">' + h(users[u].name) + '</span><span class="muted">' + h(users[u].role || '') + '</span><span class="pill num">#' + pad4(users[u].member || 0) + '</span>' + ((Store.secrets || {})[u] ? '<span class="pill num notranslate" translate="no" dir="ltr" title="رمز الدخول الشخصي" style="user-select:all">🔑 ' + h(Store.secrets[u]) + '</span>' : '<span class="pill" title="لا يوجد رمز دخول بعد">🔑 —</span>') + '<button class="btn btn-ghost btn-xs" data-act="code-copy" data-uid="' + h(u) + '" title="نسخ رسالة فيها رقم العضوية والرمز لإرسالها للمتدرب">📋</button><button class="btn btn-ghost btn-xs" data-act="code-new" data-uid="' + h(u) + '" title="توليد رمز جديد وإلغاء ربط الأجهزة الأخرى">🔄 رمز جديد</button><span class="muted">' + fmtDate(users[u].ts) + '</span></div>').join('') : '<div class="empty">لا يوجد مسجّلون.</div>') + '</div>');
+    out += drop('users', '<div class="field"><input data-keep="users-search" data-filter=".person" placeholder="🔍 بحث بالاسم…"></div><div class="people-list">' + (uids.length ? uids.map(u => '<div class="person" data-name="' + h((users[u].name || '').toLowerCase()) + '"><span class="nm">' + h(users[u].name) + '</span><span class="muted">' + h(users[u].role || '') + '</span><span class="pill num">#' + pad4(users[u].member || 0) + '</span>' + ((Store.secrets || {})[u] ? '<span class="pill num notranslate" translate="no" dir="ltr" title="رمز الدخول الشخصي" style="user-select:all">🔑 ' + h(Store.secrets[u]) + '</span>' : '<span class="pill" title="لا يوجد رمز دخول بعد">🔑 —</span>') + '<button class="btn btn-ghost btn-xs" data-act="code-copy" data-uid="' + h(u) + '" title="نسخ رسالة فيها رقم العضوية والرمز لإرسالها للمتدرب">📋</button><button class="btn btn-ghost btn-xs" data-act="code-new" data-uid="' + h(u) + '" title="توليد رمز جديد وإلغاء ربط الأجهزة الأخرى">🔄 رمز جديد</button><span class="muted">' + fmtDate(users[u].ts) + '</span><button class="btn btn-danger btn-xs" data-act="del-user" data-uid="' + h(u) + '" title="حذف حساب هذا المتدرب وكل مشاركاته نهائيًا">🗑 حذف</button></div>').join('') : '<div class="empty">لا يوجد مسجّلون.</div>') + '</div>');
     B('groups');
     out += tool('groups', '🧩', '#00A653', 'إدارة المجموعات', '<div class="row"><input type="number" min="2" max="30" id="grpCount" data-keep="grp-count" value="' + Groups.count() + '" style="width:80px;border:1px solid var(--line);border-radius:10px;padding:6px 8px"><button class="btn btn-soft btn-xs" data-act="save-groups">حفظ العدد</button></div><div style="margin-top:6px">عدد المجموعات (2–30). التوزيع اليدوي إرشادي لا إلزامي.</div>', '<button class="btn btn-primary btn-xs" data-act="assign-open">🧭 توزيع</button>');
-    B('preview');
-    out += tool('preview', '👀', '#3B4677', 'معاينة كمتدرب', 'اعرض الصفحة الرئيسية تمامًا كما يراها المتدرب، مع زر عائم للعودة.', '<button class="btn btn-soft btn-xs" data-act="preview">فتح المعاينة</button>');
     B('congrats');
     out += tool('congrats', '🏆', '#F58220', 'تهنئة الإنجاز', '<div class="bigno num">' + ach.length + '</div>متدرب بلغ <span class="num">80%</span> إجمالًا', '<button class="btn btn-soft btn-xs" data-act="drop" data-k="ach">الأسماء</button><button class="btn btn-soft btn-xs" data-act="congrats-preview" data-kind="congrats">معاينة</button><button class="btn btn-ghost btn-xs" data-act="drop" data-k="congEdit">تعديل المحتوى</button>');
     out += drop('ach', ach.length ? '<div class="people-list">' + ach.map(u => '<div class="person"><span class="nm">🏆 ' + h(u.name) + '</span><span class="muted">' + h(u.role || '') + '</span></div>').join('') + '</div>' : '<div class="empty">لم يبلغ أحد 80% بعد.</div>');
@@ -5052,14 +5178,14 @@ Views.admin = {
     const axBtns = '<button class="btn btn-primary btn-sm" data-go="axisEdit" data-id="new">➕ إضافة محور جديد</button><button class="btn btn-soft btn-sm" data-go="actEdit" data-id="new">➕ إضافة نشاط جديد</button>'; B('units');
     const accU = UIState.openAcc.has('units');
     out += '<div class="acc ' + (accU ? 'open' : '') + '" style="--ac:#3B4677;--acg:' + tint('#3B4677', .08) + '"><div class="acc-head" data-act="acc" data-k="units"><span class="aico">' + iconSvg('layers', 20, '#fff') + '</span><h3>أسماء الوحدات (العناوين الجانبية فوق المحاور)</h3><span class="arrow">◀</span></div><div class="acc-body">' + (accU ? Views.admin.unitsEditor() : '') + '</div></div>';
-    B('axes'); out += '<div class="row blk-actions">' + axBtns + '</div>';
+    B('axes'); out += '<div class="row blk-actions">' + axBtns + Views.admin.removedBtn() + '</div>' + (UIState.openDrop.has('removed') ? Views.admin.removedList() : '');
     out += '<p class="muted" style="font-family:var(--f-ui);font-size:13px;margin:10px 0">اسحب المحاور من المقبض ⠿ أو استخدم ↑↓ لإعادة ترتيبها. اضغط عنوان المحور لعرض تمارينه.</p><div id="axisAcc">';
     Content.axes({ all: true }).forEach(a => {
       const col = Content.color(a); const open = UIState.openAcc.has(a.id); const isDef = !!DEF_AXIS[a.id];
       const exs = Content.exercisesOf(a.id, { all: true });
       out += '<div class="acc ' + (open ? 'open' : '') + '" draggable="true" data-axis-drag="' + h(a.id) + '" style="--ac:' + col + ';--acg:' + tint(col, .08) + '"><div class="acc-head" data-act="acc" data-k="' + h(a.id) + '"><span class="drag-handle" title="اسحب لإعادة الترتيب">⠿</span><span class="aico">' + iconSvg(a.icon || 'star', 20, '#fff') + '</span><h3>' + h(a.title) + ' <span class="muted" style="font-weight:500;font-size:12.5px">· ' + h(Content.unitName(a.unit) || 'بدون وحدة') + ' · <span class="num">' + exs.length + '</span> تمرين</span> ' + tags(a) + '</h3>' +
         '<div class="acc-actions"><button class="btn btn-ghost btn-xs" data-act="axis-move" data-d="-1" data-id="' + h(a.id) + '" title="تحريك لأعلى">↑</button><button class="btn btn-ghost btn-xs" data-act="axis-move" data-d="1" data-id="' + h(a.id) + '" title="تحريك لأسفل">↓</button><button class="btn btn-soft btn-xs" data-go="axisEdit" data-id="' + h(a.id) + '">✏️ تعديل</button><button class="btn btn-ghost btn-xs" data-act="toggle-vis" data-id="' + h(a.id) + '">' + (a._hidden ? '👁 إظهار' : '🙈 إخفاء') + '</button><button class="btn btn-ghost btn-xs" data-act="toggle-en" data-id="' + h(a.id) + '">' + (a._disabled ? '⏸ معطّل ⇄ تفعيل' : '✅ مفعّل ⇄ تعطيل') + '</button><button class="btn btn-ghost btn-xs" data-act="copy-axis" data-id="' + h(a.id) + '">🧬 نسخ</button>' +
-        (isDef ? (a._modified ? '<button class="btn btn-ghost btn-xs" data-act="reset-axis" data-id="' + h(a.id) + '">↺ استرجاع الافتراضي</button>' : '') : '<button class="btn btn-danger btn-xs" data-act="delete-axis" data-id="' + h(a.id) + '">🗑 حذف نهائي</button>') + '</div><span class="arrow">◀</span></div>' +
+        (isDef && a._modified ? '<button class="btn btn-ghost btn-xs" data-act="reset-axis" data-id="' + h(a.id) + '">↺ استرجاع الافتراضي</button>' : '') + '<button class="btn btn-danger btn-xs" data-act="delete-axis" data-id="' + h(a.id) + '">🗑 حذف المحور</button>' + '</div><span class="arrow">◀</span></div>' +
         '<div class="acc-body">' + (open ? (exs.length ? exs.map(e => exRow(e, { axis: a.id })).join('') : '<div class="empty">لا توجد تمارين.</div>') + '<div style="margin-top:10px"><button class="btn btn-soft btn-sm" data-go="exEdit" data-id="new" data-axis="' + h(a.id) + '">➕ أضف تمرينًا لهذا المحور</button></div>' : '') + '</div></div>';
     });
     out += '</div>';
@@ -5555,7 +5681,7 @@ const ADMIN_BLOCKS = {
   acts: { icon: '⚡', title: 'قسم «أنشطة»', wide: true }, survey: { icon: '🎓', title: 'ختام البرنامج (الاستطلاع)', wide: true }, lab: { icon: '🧪', title: 'المختبر الختامي', wide: true }
 };
 const ADMIN_GROUPS_DEF = [
-  { id: 'g_users', icon: '👥', title: 'إدارة المسجلين', blocks: ['users', 'groups', 'preview', 'congrats', 'regform', 'attend', 'assess', 'broadcast'] },
+  { id: 'g_users', icon: '👥', title: 'إدارة المسجلين', blocks: ['users', 'groups', 'congrats', 'regform', 'attend', 'assess', 'broadcast'] },
   { id: 'g_sponsor', icon: '🤝', title: 'الجهة الراعية والدفعات', blocks: ['monitor', 'leads', 'followup', 'gamify', 'tplTool', 'cohorts'] },
   { id: 'g_export', icon: '📤', title: 'التصدير والنسخ', blocks: ['pdf', 'guide', 'report', 'csv', 'person', 'backup', 'autobk', 'reset'] },
   { id: 'g_home', icon: '🏠', title: 'واجهة الصفحة الرئيسية', blocks: ['homeUi', 'landing', 'homeSecs'] },
@@ -6140,6 +6266,7 @@ const App = {
   inIframe: (() => { try { return window.self !== window.top; } catch (e) { return true; } })(),
   render() {
     const root = document.getElementById('app'); if (!root) return;
+    Me.sync();
     // أثناء عرض الشريحة بملء الشاشة لا نعيد رسم الصفحة (إعادة الرسم تُخرج العنصر من ملء الشاشة)؛ نؤجلها حتى الخروج
     if (document.fullscreenElement && document.fullscreenElement.matches && document.fullscreenElement.matches('.deck')) { App._pendingRender = true; return; }
     let v = Router.cur.view;
@@ -6154,8 +6281,7 @@ const App = {
     if (App.onLanding && !App._wasLanding) { Views.landing._played = false; Views.landing._seen = new Set(); Views.landing._counted = false; } App._wasLanding = App.onLanding;
     let body = '';
     try { body = view.html(); } catch (e) { console.error(e); body = '<div class="empty" style="margin-top:24px">حدث خطأ في عرض هذه الصفحة. <button class="btn btn-soft btn-sm" data-go="home">' + HOME_LABEL + '</button></div>'; }
-    const html = (v === 'present' && view === Views.present) || (v === 'show' && view === Views.show) ? body : Layout.banners() + Layout.topbar() + '<main class="wrap">' + body + '</main>' + Layout.footer() +
-      (Admin.ok() && Admin.preview() ? '<button class="float-badge" data-act="preview-exit">↩ العودة للوحة الإدارة</button>' : '');
+    const html = (v === 'present' && view === Views.present) || (v === 'show' && view === Views.show) ? body : Layout.banners() + Layout.topbar() + '<main class="wrap">' + body + '</main>' + Layout.footer();
     // صفحة الهبوط: لا نعيد رسمها إن لم يتغير شيء حتى لا تتكرر الحركات مع كل تحديث للبيانات
     if (App.onLanding && html === App._lastLanding && root.firstChild) return;
     App._lastLanding = App.onLanding ? html : null;
@@ -6164,6 +6290,7 @@ const App = {
     $$('[data-filter]', root).forEach(applyFilter);
     $$('textarea:not([maxlength])', root).forEach(t => { t.maxLength = 4000; }); $$('input[type=text]:not([maxlength]),input:not([type]):not([maxlength])', root).forEach(t => { t.maxLength = 250; });
     document.title = (Content.site().headerTitle || 'الدورة');
+    Presence.update(); Invite.check(); Presence.refreshModal();
   },
   onData: debounce(() => {
     if (FORM_VIEWS.indexOf(Router.cur.view) > -1) return; // لا نعيد رسم نماذج التحرير أثناء الكتابة
@@ -6195,7 +6322,8 @@ function watchDefs() {
     'site': v => { Store.site = v || {}; },
     'settings': v => { v = v || {}; Store.groupCount = v.groups && v.groups.count ? v.groups.count : DEFAULT_GROUPS; Store.groupNames = v.groupNames || {}; Store.assessCfg = v.assess || {}; Store.attCfg = v.attendance || {}; Store.cohortCfg = v.cohort || {}; Store.presentCfg = v.present || {}; },
     'assign': v => { Store.assign = v || {}; },
-    'users': v => { Store.usersPub = v || {}; mergeUsers(); },
+    'users': v => { Store.usersPub = v || {}; mergeUsers();
+      const me = Me.data; if (me && !me.admin && me.uid) { if (Store.usersPub[me.uid]) Me._seenInUsers = me.uid; else if (Me._seenInUsers === me.uid) accountGoneCheck(me.uid); } },
     'posts': v => { Store.posts = v || {}; },
     'reveal': v => { Store.reveal = v || {}; },
     'lab': v => { v = v || {}; Store.labTimers = v.timers || {}; Store.labAnswers = v.answers || {}; },
@@ -6203,10 +6331,13 @@ function watchDefs() {
     'stats/registered': v => { Store.registered = Number(v) || 0; },
     'meta/resetStamp': v => {
       Store.resetStamp = Number(v) || 0;
-      if (Me.data && Store.resetStamp && (Me.data.ts || 0) < Store.resetStamp) { Me.clear(); UIState.draft = {}; UIState.editing = {}; setTimeout(() => UI.toast('تمت إعادة ضبط البرنامج — سجّل اسمك من جديد'), 300); syncWatchers(); }
+      if (Me.data && !Me.isAdmin() && Store.resetStamp && (Me.data.ts || 0) < Store.resetStamp) { Me.clear(); UIState.draft = {}; UIState.editing = {}; setTimeout(() => UI.toast('تمت إعادة ضبط البرنامج — سجّل اسمك من جديد'), 300); syncWatchers(); }
     }
   };
   const pub = Object.keys(d);
+  // عقد عامة إضافية لا تنتظرها الواجهة (حتى لا تتعطل المنصة قبل نشر قواعد الأمان المحدّثة)
+  d['removed'] = v => { v = v || {}; Store.removed = { axes: v.axes || {}, ex: v.ex || {} }; };
+  d['invite'] = v => { Store.invite = v || null; setTimeout(Invite.check, 0); };
   const me = Me.uid();
   if (Admin.ok()) {
     Object.assign(d, {
@@ -6216,7 +6347,8 @@ function watchDefs() {
       'backupIndex': v => { Store.backupIndex = v || {}; },
       'cohortIndex': v => { Store.cohortIndex = v || {}; },
       'secure': v => { Store.secure = v || {}; },
-      'secrets': v => { Store.secrets = v || {}; }
+      'secrets': v => { Store.secrets = v || {}; },
+      'presence': v => { Store.presence = v || {}; }
     });
   } else if (me) {
     d['private/' + me] = v => { Store.priv = v ? { [me]: v } : {}; mergeUsers(); };
@@ -6227,6 +6359,7 @@ function watchDefs() {
   return { defs: d, pub };
 }
 function syncWatchers() {
+  Me.sync();
   const { defs, pub } = watchDefs(); Watch.publicPaths = pub;
   Object.keys(Watch.active).forEach(p => { if (!defs[p]) { try { Watch.active[p](); } catch (e) {} delete Watch.active[p]; } });
   if (!Admin.ok()) { Store.backupIndex = {}; Store.cohortIndex = {}; Store.secure = {}; Store.secrets = {}; if (!Me.uid()) { Store.priv = {}; Store.leads = {}; Store.followups = {}; Store.mySecret = ''; mergeUsers(); } }
@@ -6267,15 +6400,30 @@ async function doRegister() {
   } catch (e) { UI.alert('تعذر التسجيل: ' + h(e.message || e)); if (btn) { btn.disabled = false; btn.textContent = 'ابدأ 🚀'; } }
 }
 function privacyModal() { const pv = Content.privacy(); const m = UI.modal('<h3>🔒 إشعار الخصوصية</h3><div style="line-height:1.9">' + richHtml(pv.text) + '</div><div class="actions"><button class="btn btn-primary" data-x>حسنًا</button></div>', { wide: true }); $('[data-x]', m.el).onclick = () => m.close(); }
-// حذف كل بيانات المتدرب من السيرفر (حق المستخدم في حذف بياناته)
-async function deleteMyData() {
-  const ok = await UI.confirm('سيُحذف نهائيًا من السيرفر: بياناتك، ومشاركاتك الفردية، ونتائج تقييماتك، وسجل حضورك، واهتماماتك، ومتابعاتك، وإعجاباتك. إجابات المجموعات تبقى باسم المجموعة مع إزالة اسمك منها. لا يمكن التراجع، ولن تتمكن من الحصول على الشهادة.', { danger: true, ok: 'احذف بياناتي نهائيًا', title: 'حذف بياناتي' });
-  if (!ok) return; const uid = Me.uid(); const upd = {};
+// حذف المدرب حساب هذا المتدرب: نتأكد من الخادم بعد لحظات (تجاهلًا لأي تغيير محلي عابر) ثم نسجّل الخروج من الجهاز
+function accountGoneCheck(uid) {
+  if (accountGoneCheck.busy) return; accountGoneCheck.busy = true;
+  setTimeout(async () => {
+    accountGoneCheck.busy = false; if (!Me.data || Me.data.uid !== uid || (Store.usersPub || {})[uid]) return;
+    let u = null; try { u = await DB.get('users/' + uid); } catch (e) { return; } if (u || !Me.data || Me.data.uid !== uid) return;
+    Me._seenInUsers = null; Presence.leave(); Me.clear(); UIState.draft = {}; UIState.editing = {}; syncWatchers(); App.render();
+    UI.alert('حذف المدرب هذا الحساب من المنصة. يمكنك التسجيل من جديد.', 'تم حذف الحساب');
+  }, 1500);
+}
+// كل مسارات بيانات متدرب واحد (تُستخدم لحذف المتدرب بياناته بنفسه، ولحذف المدرب حسابًا محددًا من قائمة المسجلين)
+function purgeUserUpdates(uid) {
+  const upd = {};
   upd['users/' + uid] = null; upd['assess/pre/' + uid] = null; upd['assess/post/' + uid] = null; upd['attendance/' + uid] = null; upd['assign/' + uid] = null; upd['leads/' + uid] = null;
   ['30', '60', '90'].forEach(n => { upd['followups/d' + n + '/' + uid] = null; });
   upd['private/' + uid] = null; upd['secrets/' + uid] = null; upd['devices/' + uid] = null; Attend.days().forEach(d => { upd['checkins/d' + d + '/' + uid] = null; });
   Object.keys(Store.posts || {}).forEach(ex => { const ps = Store.posts[ex] || {}; Object.keys(ps).forEach(k => { const p = ps[k] || {}; if (k === uid) upd['posts/' + ex + '/' + k] = null; else { if (p.members && p.members[uid]) upd['posts/' + ex + '/' + k + '/members/' + uid] = null; if (p.likes && p.likes[uid]) upd['posts/' + ex + '/' + k + '/likes/' + uid] = null; if (p.by === uid) upd['posts/' + ex + '/' + k + '/name'] = ''; } }); });
   Object.keys(Store.storyLikes || {}).forEach(st => { if (((Store.storyLikes[st] || {}).likes || {})[uid]) upd['storyLikes/' + st + '/likes/' + uid] = null; });
+  return upd;
+}
+// حذف كل بيانات المتدرب من السيرفر (حق المستخدم في حذف بياناته)
+async function deleteMyData() {
+  const ok = await UI.confirm('سيُحذف نهائيًا من السيرفر: بياناتك، ومشاركاتك الفردية، ونتائج تقييماتك، وسجل حضورك، واهتماماتك، ومتابعاتك، وإعجاباتك. إجابات المجموعات تبقى باسم المجموعة مع إزالة اسمك منها. لا يمكن التراجع، ولن تتمكن من الحصول على الشهادة.', { danger: true, ok: 'احذف بياناتي نهائيًا', title: 'حذف بياناتي' });
+  if (!ok) return; const uid = Me.uid(); const upd = purgeUserUpdates(uid); Me._seenInUsers = null;
   await DB.update('', upd); DB.transaction('stats/registered', c => Math.max(0, (Number(c) || 0) - 1));
   Me.clear(); UIState.draft = {}; UIState.editing = {}; Router.go('home'); UI.toast('تم حذف بياناتك نهائيًا');
 }
@@ -6308,7 +6456,7 @@ async function saveText(exId) {
   if (!text) { UI.alert('اكتب إجابتك أولًا.'); return; }
   const key = postKey(e); if (!key) return;
   const me = Me.data; const upd = { text, name: me.name, role: me.role || '', ts: DB.now() };
-  if (e.mode === 'group') { upd.group = Me.group(); upd.by = me.uid; upd['members/' + me.uid] = true; } else upd.uid = me.uid;
+  if (e.mode === 'group' && !me.admin) { upd.group = Me.group(); upd.by = me.uid; upd['members/' + me.uid] = true; } else upd.uid = me.uid;
   await DB.update('posts/' + exId + '/' + key, upd);
   if (ta) ta.value = ''; UIState.editing[exId] = false; UI.toast('✅ تم الحفظ'); App.render();
 }
@@ -6318,7 +6466,7 @@ async function saveInter(exId) {
   if (missing) { UI.alert(e.format === 'fillblank' ? 'املأ كل الفراغات قبل الإرسال.' : 'أجب عن كل الأسئلة قبل الحفظ.'); return; }
   const key = postKey(e); if (!key) return; const me = Me.data;
   const upd = { answers: e.items.map((_, i) => d[i]), name: me.name, role: me.role || '', ts: DB.now() };
-  if (e.mode === 'group') { upd.group = Me.group(); upd.by = me.uid; upd['members/' + me.uid] = true; } else upd.uid = me.uid;
+  if (e.mode === 'group' && !me.admin) { upd.group = Me.group(); upd.by = me.uid; upd['members/' + me.uid] = true; } else upd.uid = me.uid;
   await DB.update('posts/' + exId + '/' + key, upd);
   UIState.editing[exId] = false; UIState.draft[exId] = upd.answers.slice(); UI.toast(e.mode === 'group' ? '📤 أُرسلت إجابات المجموعة' : '✅ تم حفظ إجاباتك'); App.render();
 }
@@ -6394,20 +6542,23 @@ document.addEventListener('click', async ev => {
   switch (act) {
     // ----- عام -----
     case 'switch-user': { const ok = await UI.confirm('سيُمسح تسجيلك من هذا الجهاز فقط (لن يُحذف أي شيء من السيرفر)، وستعود إلى ' + (HAS_LANDING ? 'الصفحة التعريفية للبرنامج' : 'صفحة الدخول') + ' لتسجيل مستخدم جديد أو الدخول برقم العضوية.', { ok: 'تسجيل مستخدم جديد' }); if (ok) { Me.clear(); UIState.draft = {}; UIState.editing = {}; syncWatchers(); Router.go('home'); window.scrollTo(0, 0); } break; }
+    case 'logout': { const ok = await UI.confirm('تسجيل الخروج من هذا الجهاز؟ لن يُحذف شيء من بياناتك أو مشاركاتك. للعودة لاحقًا استخدم رقم العضوية ورمز الدخول الشخصي من صفحة «حسابي».', { ok: 'تسجيل الخروج' }); if (ok) { Presence.leave(); Me.clear(); UIState.draft = {}; UIState.editing = {}; syncWatchers(); Router.go('home'); window.scrollTo(0, 0); } break; }
+    case 'guest-login': Presence.leave(); Me.clear(); syncWatchers(); Router.go('home'); window.scrollTo(0, 0); break;
     case 'open-login': LoginModal.open(); break;
+    case 'presence-show': Presence.show(exId); break;
+    case 'invite-send': Invite.send(id); break;
+    case 'invite-cancel': Invite.cancel(); break;
     case 'lp-enter': Router.go('home'); window.scrollTo(0, 0); break;
     case 'lp-scroll': { const n = document.querySelector('.lp-hero'); const nx = n && n.nextElementSibling; if (nx) window.scrollTo({ top: nx.getBoundingClientRect().top + window.scrollY - 70, behavior: document.documentElement.getAttribute('data-motion') === 'reduce' ? 'auto' : 'smooth' }); break; }
     case 'lp-unit': { UIState.lpUnit = +t.getAttribute('data-i'); const old = document.querySelector('.lp-content'); if (old) { const tmp = document.createElement('div'); tmp.innerHTML = LandingSections.content(Landing.sec('content')); const nw = tmp.firstChild; $$('.rv', nw).forEach(e => e.classList.add('in')); old.replaceWith(nw); App._lastLanding = null; } break; }
     case 'admin-enter': {
-      if (Admin.ok()) { SafeSS.del('ec_preview'); Router.go('admin'); break; }
+      if (Admin.ok()) { Router.go('admin'); break; }
       if (AUTH.enabled) { adminLogin(); break; }
-      const v = await UI.prompt('أدخل الرمز السري للوحة الإدارة', { title: '🔐 لوحة الإدارة', type: 'password', inputmode: 'numeric', ok: 'دخول' });
-      if (v == null) break; if (v.trim() === ADMIN_PASS) { SafeSS.set('ec_admin', '1'); SafeSS.del('ec_preview'); Router.go('admin'); } else UI.alert('الرمز غير صحيح.');
+      const v = await UI.prompt('أدخل الرمز السري للوحة الإدارة', { title: '🔐 دخول المدرب', type: 'password', inputmode: 'numeric', ok: 'دخول' });
+      if (v == null) break; if (v.trim() === ADMIN_PASS) { SafeSS.set('ec_admin', '1'); Presence.leave(); LoginModal.close(); syncWatchers(); Router.go('home'); UI.toast('🛡️ أهلًا بك — زر «لوحة التحكم» أعلى الصفحة'); } else UI.alert('الرمز غير صحيح.');
       break;
     }
-    case 'admin-exit': SafeSS.del('ec_admin'); SafeSS.del('ec_preview'); if (AUTH.enabled) { AUTH.isAdmin = false; try { await firebase.auth().signOut(); } catch (e) {} } Router.go('home'); break;
-    case 'preview': SafeSS.set('ec_preview', '1'); Router.go('home'); break;
-    case 'preview-exit': SafeSS.del('ec_preview'); Router.go('admin'); break;
+    case 'admin-exit': { if (!(await UI.confirm('تسجيل خروج المدرب من هذا الجهاز؟', { ok: 'تسجيل الخروج' }))) break; SafeSS.del('ec_admin'); if (AUTH.enabled) { AUTH.isAdmin = false; try { await firebase.auth().signOut(); } catch (e) {} } Me.sync(); syncWatchers(); Router.go('home'); break; }
     case 'bc-close': SafeLS.set('ec_bc_closed', t.getAttribute('data-id')); App.render(); break;
     case 'register': doRegister(); break;
     case 'member-login': memberLogin(); break;
@@ -6658,12 +6809,30 @@ document.addEventListener('click', async ev => {
     case 'reset-axis': { if (await UI.confirm('استرجاع المحتوى الأصلي لهذا المحور؟ سيُحذف التراكب فقط (حالة الإظهار والتفعيل لا تتأثر).', { ok: 'استرجاع الافتراضي' })) DB.remove('content/axes/' + id); break; }
     case 'reset-ex': { if (await UI.confirm('استرجاع المحتوى الأصلي لهذا التمرين؟', { ok: 'استرجاع الافتراضي' })) DB.remove('content/ex/' + id); break; }
     case 'delete-axis': {
-      if (!(await UI.confirm('حذف نهائي لهذا المحور المُضاف وكل تمارينه المُضافة التابعة له؟ <b>لا رجعة في هذا الحذف.</b>', { danger: true, ok: 'حذف نهائي' }))) break;
-      const upd = { ['added/axes/' + id]: null, ['visibility/' + id]: null, ['enabled/' + id]: null };
-      Object.keys(Store.addedEx || {}).forEach(k => { if (Store.addedEx[k].axis === id) { upd['added/ex/' + k] = null; upd['posts/' + k] = null; upd['visibility/' + k] = null; } });
-      await DB.update('', upd); DB.set('order/axes', arr(Store.order).filter(x => x !== id)); UI.toast('تم الحذف'); break;
+      const a = Content.axis(id); if (!a) break; const exIds = Content.exIdsOf(id);
+      if (!(await UI.confirm('حذف المحور «' + h(a.title) + '» مع تمارينه (<span class="num">' + exIds.length + '</span>) وكل مشاركاتها؟ يختفي من المنصة ولوحة التحكم.' + (DEF_AXIS[id] ? '<br><span class="muted">محور أصلي: يمكن استرجاع محتواه لاحقًا من «المحذوفات»، أما المشاركات فتُحذف نهائيًا.</span>' : '<br><b>محور مُضاف: لا رجعة في هذا الحذف.</b>'), { danger: true, ok: 'حذف المحور' }))) break;
+      const upd = { ['visibility/' + id]: null, ['enabled/' + id]: null, ['content/axes/' + id]: null, ['order/ex/' + id]: null };
+      if (DEF_AXIS[id]) upd['removed/axes/' + id] = true; else upd['added/axes/' + id] = null;
+      exIds.forEach(k => { upd['posts/' + k] = null; upd['visibility/' + k] = null; upd['reveal/' + k] = null; upd['content/ex/' + k] = null; upd['presence/' + k] = null; if (!DEF_EX[k]) upd['added/ex/' + k] = null; });
+      if (Store.invite && exIds.indexOf(Store.invite.ex) > -1) upd['invite'] = null;
+      await DB.update('', upd, { allowTopLevel: true }); DB.set('order/axes', arr(Store.order).filter(x => x !== id)); UI.toast('🗑 حُذف المحور'); break;
     }
-    case 'delete-ex': { if (await UI.confirm('حذف نهائي لهذا العنصر المُضاف ومشاركاته؟ <b>لا رجعة في هذا الحذف.</b>', { danger: true, ok: 'حذف نهائي' })) DB.update('', { ['added/ex/' + id]: null, ['posts/' + id]: null, ['visibility/' + id]: null, ['reveal/' + id]: null }); break; }
+    case 'delete-ex': {
+      const e = Content.ex(id); if (!e) break;
+      if (!(await UI.confirm('حذف التمرين «' + h(e.title) + '» وكل مشاركاته؟' + (DEF_EX[id] ? '<br><span class="muted">تمرين أصلي: يمكن استرجاعه لاحقًا من «المحذوفات»، أما المشاركات فتُحذف نهائيًا.</span>' : '<br><b>تمرين مُضاف: لا رجعة في هذا الحذف.</b>'), { danger: true, ok: 'حذف التمرين' }))) break;
+      const upd = { ['posts/' + id]: null, ['visibility/' + id]: null, ['reveal/' + id]: null, ['content/ex/' + id]: null, ['presence/' + id]: null };
+      if (DEF_EX[id]) upd['removed/ex/' + id] = true; else upd['added/ex/' + id] = null;
+      if (Store.invite && Store.invite.ex === id) upd['invite'] = null;
+      await DB.update('', upd, { allowTopLevel: true }); UI.toast('🗑 حُذف التمرين'); break;
+    }
+    case 'restore-removed': { const k = t.getAttribute('data-kind'); await DB.remove('removed/' + k + '/' + id); UI.toast('↺ استُرجع ' + (k === 'axes' ? 'المحور' : 'التمرين')); break; }
+    case 'del-user': {
+      const uid = t.getAttribute('data-uid'); const u = (Store.users || {})[uid] || {};
+      if (!(await UI.confirm('حذف حساب «' + h(u.name || uid) + '» نهائيًا من المنصة مع كل بياناته: مشاركاته الفردية، وتقييماته، وحضوره، واهتماماته، ومتابعاته، وإعجاباته. إجابات المجموعات تبقى باسم المجموعة مع إزالة اسمه منها. <b>لا رجعة في هذا الحذف.</b>', { danger: true, ok: 'حذف المتدرب' }))) break;
+      const upd = purgeUserUpdates(uid);
+      Object.keys(Store.presence || {}).forEach(ex => { const pr = Store.presence[ex] || {}; Object.keys(pr).forEach(s => { if (pr[s] && pr[s].u === uid) upd['presence/' + ex + '/' + s] = null; }); });
+      await DB.update('', upd); DB.transaction('stats/registered', c => Math.max(0, (Number(c) || 0) - 1)); UI.toast('🗑 حُذف المتدرب وكل مشاركاته'); break;
+    }
     case 'clear-posts': { if (await UI.confirm('مسح كل مشاركات «' + h(Content.exTitle(id)) + '»؟', { danger: true, ok: 'مسح المشاركات' })) DB.remove('posts/' + id); break; }
     case 'reveal': { const cur = await DB.get('reveal/' + id); await DB.set('reveal/' + id, cur ? null : true); UI.toast(cur ? '🔒 أُخفيت الإجابات' : '🔓 كُشفت الإجابات الصحيحة لكل المتدربين'); break; } // قراءة الحالة الفعلية من القاعدة قبل التبديل
     case 'global-reset': globalReset(); break;
@@ -6762,7 +6931,7 @@ function authInit() {
     if (SafeSS.get('ec_admin_redirect')) { SafeSS.del('ec_admin_redirect'); if (!ok && u && !u.isAnonymous) { UI.alert('الحساب ' + h(u.email || '') + ' غير مضاف إلى حسابات المدربين. أضف هذا الرقم في العقدة admins بقيمة true:<br><b class="num" dir="ltr" style="user-select:all">' + h(u.uid) + '</b>'); firebase.auth().signOut(); return; } }
     syncWatchers(); await ensureOwnership();
     if (ok) setTimeout(migrateSchema, 1500);
-    if (ok && SafeSS.get('ec_go_admin')) { SafeSS.del('ec_go_admin'); Router.go('admin'); return; }
+    if (ok && SafeSS.get('ec_go_admin')) { SafeSS.del('ec_go_admin'); Router.go('home'); return; }
     App.render();
   });
 }
@@ -6771,7 +6940,7 @@ function genCode() { const a = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; let s = ''; co
 // ربط الجهاز بالسجل: السجل الجديد يُربط فورًا، والدخول من جهاز آخر يحتاج رمز الدخول الشخصي
 async function linkDevice(uid, code) { const au = authUid(); if (!DB.real || !au) return true; try { await DB.set('devices/' + uid + '/' + au, code || 'legacy', { quiet: true, beforeReady: true }); return true; } catch (e) { return false; } }
 async function ensureOwnership() {
-  if (!DB.real || !Me.data || !authUid() || !AUTH.enabled) return;
+  if (!DB.real || !Me.data || Me.isAdmin() || !authUid() || !AUTH.enabled) return;
   const uid = Me.data.uid; if (uid === authUid()) return;
   try { if (await DB.get('devices/' + uid + '/' + authUid())) return; } catch (e) {}
   if (await linkDevice(uid, Me.data.code)) {
@@ -6816,7 +6985,7 @@ function adminLogin() {
   const finish = async user => {
     const ok = (await DB.get('admins/' + user.uid)) === true;
     if (!ok) { await firebase.auth().signOut(); err('الحساب ' + h(user.email || '') + ' غير مضاف إلى حسابات المدربين (العقدة admins في قاعدة البيانات).<br>انسخ هذا الرقم وأضفه هناك بقيمة true:<br><span class="num" dir="ltr" style="user-select:all;font-weight:700">' + h(user.uid) + '</span>'); return false; }
-    AUTH.user = user; AUTH.isAdmin = true; m.close(); SafeSS.del('ec_preview'); syncWatchers(); setTimeout(migrateSchema, 1500); Router.go('admin'); return true;
+    AUTH.user = user; AUTH.isAdmin = true; m.close(); LoginModal.close(); Presence.leave(); syncWatchers(); setTimeout(migrateSchema, 1500); Router.go('home'); UI.toast('🛡️ أهلًا بك — زر «لوحة التحكم» أعلى الصفحة'); return true;
   };
   $('[data-google]', m.el).onclick = async () => {
     const btn = $('[data-google]', m.el); btn.disabled = true; err('');
@@ -6855,6 +7024,7 @@ function boot() {
   setTimeout(() => { if (!App.dataReady) { App.slow = true; App.render(); } }, 8000);
   DB.onStatus(debounce(() => { if (App.dataReady) App.render(); }, 120));
   DB.onReject = (e, where) => { console.warn('write rejected', where, e); UI.toast('⚠️ تعذّر حفظ التعديل: ' + ((e && e.code === 'PERMISSION_DENIED') || /permission/i.test(String(e && e.message)) ? 'رفضت قاعدة البيانات الكتابة' : String((e && e.message) || e)) + ' — تُعرض الآن آخر نسخة محفوظة على الخادم', 6000); App.onData(); };
+  let wasConn = DB.status.connected; DB.onStatus(st => { if (st.connected && !wasConn) Presence.resync(); wasConn = st.connected; });
   DB.onSynced = () => UI.toast('✅ عاد الاتصال وحُفظت كل التعديلات المعلّقة', 4000);
   window.addEventListener('beforeunload', e => { if (DB.status && DB.status.pending > 0) { e.preventDefault(); e.returnValue = ''; return ''; } });
   App.render();

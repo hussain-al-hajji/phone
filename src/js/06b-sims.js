@@ -163,9 +163,9 @@ const Sims = {
   },
   html(e) {
     const S = Sims.of(e); const col = exColor(e);
-    const can = Me.isReg() && (e.mode !== 'group' || Me.group()); const dis = can ? '' : 'disabled';
+    const can = Me.isReg() && (e.mode !== 'group' || Me.group() || Me.isAdmin()); const dis = can ? '' : 'disabled';
     const s = Sims.state(e); const key = postKey(e); const post = key ? (Store.posts[e.id] || {})[key] : null;
-    return '<div class="answer-box sim-box" style="--ac:' + col + ';--acg:' + tint(col, .1) + '">' + (!Me.isReg() ? '<div class="locked-note">🔒 للمسجلين فقط — يمكنك التجربة بعد التسجيل.</div>' : e.mode === 'group' && !Me.group() ? '<div class="locked-note">👆 اختر مجموعتك أولًا.</div>' : '') +
+    return '<div class="answer-box sim-box" style="--ac:' + col + ';--acg:' + tint(col, .1) + '">' + (!Me.isReg() ? '<div class="locked-note">🔒 للمسجلين فقط — يمكنك التجربة بعد التسجيل.</div>' : e.mode === 'group' && !Me.group() && !Me.isAdmin() ? '<div class="locked-note">👆 اختر مجموعتك أولًا.</div>' : '') +
       (post ? '<div class="status-note" style="margin-bottom:6px">✅ آخر حفظ: ' + h(post.name || '') + ' · ' + ago(post.ts || 0) + ' — يمكنك التعديل والحفظ مجددًا.</div>' : '') +
       '<div class="sim-grid"><div class="sim-form">' + S.form(s, e.id, dis) + '</div><div id="simLive-' + h(e.id) + '">' + S.live(s) + '</div></div>' +
       '<div class="save-row"><button class="btn btn-primary" data-act="sim-save" data-ex="' + h(e.id) + '" ' + dis + '>💾 حفظ النتيجة' + (e.mode === 'group' ? ' للمجموعة' : '') + '</button><button class="btn btn-ghost btn-sm" data-act="sim-reset" data-ex="' + h(e.id) + '" ' + dis + '>↺ البدء من جديد</button></div></div>';
@@ -201,7 +201,7 @@ const Sims = {
     if (S.needsCheck && !s.done) { UI.alert('اضغط «تحقّق من إجاباتي» أولًا، ثم احفظ النتيجة.'); return; }
     if (e.sim === 'budget' && BudgetSim.spent(s) < BUDGET_TOTAL * 0.9) { if (!(await UI.confirm('لم توزعوا إلا ' + QAR(BudgetSim.spent(s)) + ' ر.س من الميزانية. حفظ النتيجة رغم ذلك؟', { ok: 'حفظ' }))) return; }
     const upd = { state: JSON.parse(JSON.stringify(s)), metric: S.metric(s), summary: S.summary(s), name: me.name, role: me.role || '', ts: DB.now() };
-    if (e.mode === 'group') { upd.group = Me.group(); upd.by = me.uid; upd['members/' + me.uid] = true; } else upd.uid = me.uid;
+    if (e.mode === 'group' && !me.admin) { upd.group = Me.group(); upd.by = me.uid; upd['members/' + me.uid] = true; } else upd.uid = me.uid;
     await DB.update('posts/' + exId + '/' + key, upd); UI.toast('✅ حُفظت النتيجة'); App.render();
   }
 };

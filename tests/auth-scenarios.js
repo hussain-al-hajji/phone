@@ -61,10 +61,10 @@ const tryW = (p, fnSrc) => p.evaluate(async src => { try { await (new Function('
     await p.fill('#alEmail', 'someone@qdb.test'); await p.fill('#alPass', 'pw123456'); await p.click('.modal [data-ok]'); await p.waitForTimeout(400);
     R.login.notAdminMsg = (await p.$eval('#alErr', e => e.textContent)).slice(0, 60); R.login.notAdminInAdmin = await p.evaluate(() => Admin.ok());
     await p.fill('#alEmail', 'trainer@qdb.test'); await p.fill('#alPass', 'Secret#123'); await p.click('.modal [data-ok]'); await p.waitForTimeout(700);
-    R.login.adminView = await p.evaluate(() => Router.cur.view === 'admin' && Admin.ok());
+    R.login.adminView = await p.evaluate(() => Router.cur.view === 'home' && Admin.ok() && !!document.querySelector('.top-actions [data-go="admin"]')); // يدخل المدرب إلى المنصة أولًا وزر «لوحة التحكم» أعلى الصفحة
     R.adminCan = { hideSection: await tryW(p, "() => DB.set('visibility/home_tools', false)"), editSite: await tryW(p, "() => DB.set('site/home/heroTitle', 'عنوان جديد')"), backup: await tryW(p, "() => autoBackup(true)") };
     R.adminCan.serverHidden = (await S(p, 'visibility/home_tools')) === false;
-    await p.click('[data-act="admin-exit"]'); await p.waitForTimeout(400);
+    await p.click('.top-actions [data-act="admin-exit"]'); await p.waitForSelector('.modal [data-ok]'); await p.click('.modal [data-ok]'); await p.waitForTimeout(400);
     R.afterLogout = { adminOk: await p.evaluate(() => Admin.ok()), write: await tryW(p, "() => DB.set('visibility/home_tools', null)") };
     R.login.realNet = net.real; await ctx.close();
   }
@@ -72,7 +72,7 @@ const tryW = (p, fnSrc) => p.evaluate(async src => { try { await (new Function('
     let r = await open(b, '', { googleUser: { uid: 'adm1', email: 'trainer@gmail.com' } });
     await r.p.click('[data-act="admin-enter"]'); await r.p.waitForTimeout(300); await r.p.click('[data-google]'); await r.p.waitForTimeout(600);
     R.appCheckActivatedWith = await r.p.evaluate(() => window.__mock.appCheck);
-    R.google = { adminView: await r.p.evaluate(() => Router.cur.view === 'admin' && Admin.ok()), canHide: await tryW(r.p, "() => DB.set('visibility/home_x', false)") }; await r.ctx.close();
+    R.google = { adminView: await r.p.evaluate(() => Router.cur.view === 'home' && Admin.ok()), canHide: await tryW(r.p, "() => DB.set('visibility/home_x', false)") }; await r.ctx.close();
     r = await open(b, '', { googleUser: { uid: 'g777', email: 'stranger@gmail.com' } });
     await r.p.click('[data-act="admin-enter"]'); await r.p.waitForTimeout(300); await r.p.click('[data-google]'); await r.p.waitForTimeout(600);
     R.google.strangerMsg = (await r.p.$eval('#alErr', e => e.textContent)).replace(/\s+/g, ' ').slice(0, 140); R.google.strangerAdmin = await r.p.evaluate(() => Admin.ok()); await r.ctx.close();

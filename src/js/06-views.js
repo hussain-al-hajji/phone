@@ -319,7 +319,7 @@ const DEFAULT_STEPS = {
   text: ['اقرأ الموقف جيدًا.', 'اكتب إجابتك في الصندوق.', 'اضغط «حفظ» وتابع مشاركات زملائك مباشرة.']
 };
 function exColor(e) { const ax = Content.axisOfEx(e.id); const a = ax && Content.axis(ax); return a ? Content.color(a) : (e.kind === 'survey' ? '#F58220' : '#F58220'); }
-function postKey(e) { if (e.mode === 'group') { const g = Me.group(); return g ? 'g' + g : null; } return Me.uid(); }
+function postKey(e) { if (Me.isAdmin()) return Me.ADMIN_UID; if (e.mode === 'group') { const g = Me.group(); return g ? 'g' + g : null; } return Me.uid(); }
 function isRevealed(e) { return !!(Store.reveal && Store.reveal[e.id]); }
 function bankOf(e) { // بنك كلمات بترتيب ثابت مخلوط حسب معرّف التمرين
   const words = e.items.map(i => i.answer); let s = 0; for (const ch of e.id) s = (s * 33 + ch.charCodeAt(0)) % 100003;
@@ -328,6 +328,7 @@ function bankOf(e) { // بنك كلمات بترتيب ثابت مخلوط حس�
 const LETTERS = ['أ', 'ب', 'ج', 'د', 'هـ', 'و', 'ز', 'ح'];
 
 function groupPickerHtml(e, o = {}) {
+  if (Me.isAdmin()) return '<div class="group-picker"><div class="assign-hint" style="margin-top:0">🛡️ أنت تتصفح بحساب الإدارة: مشاركتك تُحفظ باسم <b>«الإدارة»</b> دون الانضمام لأي مجموعة، ولا تمس إجابات المجموعات.</div></div>';
   const my = Me.group(); const assigned = Me.uid() ? Groups.assignedOf(Me.uid()) : null;
   let out = '<div class="group-picker"><div class="ex-block-lbl" style="font-family:var(--f-display);font-weight:700">👥 اختر مجموعتك</div>' + (o.note ? '<div class="muted" style="font-family:var(--f-ui);font-size:13px">' + o.note + '</div>' : '');
   if (assigned) out += '<div class="assign-hint">📌 عيّنك المدرّب في <b>' + h(Groups.label(assigned)) + '</b> — اختر مجموعتك المخصّصة لتجنّب الخطأ.</div>';
@@ -429,11 +430,11 @@ function answerBoxHtml(e) {
   }
   const post = (Store.posts[e.id] || {})[key]; const editing = !!UIState.editing[e.id];
   if (e.format === 'text') {
-    if (post && !editing) return '<div class="answer-box"><div class="row" style="margin-bottom:8px"><b style="font-family:var(--f-display)">✅ ' + (isGroup ? 'إجابة ' + h(Groups.label(Me.group())) : 'إجابتك المحفوظة') + '</b><span class="grow"></span><button class="btn btn-soft btn-sm" data-act="edit-ans" data-ex="' + h(e.id) + '">✏️ تعديل</button></div><div class="answer-view">' + h(post.text) + '</div></div>';
+    if (post && !editing) return '<div class="answer-box"><div class="row" style="margin-bottom:8px"><b style="font-family:var(--f-display)">✅ ' + (isGroup && !Me.isAdmin() ? 'إجابة ' + h(Groups.label(Me.group())) : 'إجابتك المحفوظة') + '</b><span class="grow"></span><button class="btn btn-soft btn-sm" data-act="edit-ans" data-ex="' + h(e.id) + '">✏️ تعديل</button></div><div class="answer-view">' + h(post.text) + '</div></div>';
     return '<div class="answer-box"><textarea data-keep="ans-' + h(e.id) + '" id="ans-' + h(e.id) + '" placeholder="' + (isGroup ? 'اكتب إجابة مجموعتك هنا…' : 'اكتب إجابتك هنا…') + '">' + (editing && post ? h(post.text) : '') + '</textarea><div class="save-row"><button class="btn btn-primary" data-act="save-text" data-ex="' + h(e.id) + '">💾 حفظ' + (isGroup ? ' إجابة المجموعة' : '') + '</button>' + (editing ? '<button class="btn btn-ghost" data-act="cancel-edit" data-ex="' + h(e.id) + '">إلغاء</button>' : '') + '<span class="status-note">تظهر إجابتك فورًا في مشاركات الجميع.</span></div></div>';
   }
   const active = !post || editing;
-  return '<div class="answer-box" style="--ac:' + col + ';--acg:' + tint(col, .1) + '">' + (post && !editing ? '<div class="row" style="margin-bottom:6px"><b style="font-family:var(--f-display)">✅ ' + (isGroup ? 'أُرسلت إجابات ' + h(Groups.label(Me.group())) : 'تم حفظ إجاباتك') + '</b><span class="grow"></span><button class="btn btn-soft btn-sm" data-act="edit-ans" data-ex="' + h(e.id) + '">✏️ تعديل</button></div>' : '') +
+  return '<div class="answer-box" style="--ac:' + col + ';--acg:' + tint(col, .1) + '">' + (post && !editing ? '<div class="row" style="margin-bottom:6px"><b style="font-family:var(--f-display)">✅ ' + (isGroup && !Me.isAdmin() ? 'أُرسلت إجابات ' + h(Groups.label(Me.group())) : 'تم حفظ إجاباتك') + '</b><span class="grow"></span><button class="btn btn-soft btn-sm" data-act="edit-ans" data-ex="' + h(e.id) + '">✏️ تعديل</button></div>' : '') +
     interactiveHtml(e, post, true, editing) +
     (active ? '<div class="save-row"><button class="btn btn-primary" data-act="save-inter" data-ex="' + h(e.id) + '">' + (isGroup ? '📤 حفظ وإرسال إجابات المجموعة' : '💾 حفظ الإجابات') + '</button>' + (editing ? '<button class="btn btn-ghost" data-act="cancel-edit" data-ex="' + h(e.id) + '">إلغاء</button>' : '') + '</div>' : '') + '</div>';
 }
@@ -471,7 +472,8 @@ Views.ex = {
     const col = exColor(e); const isSurvey = e.kind === 'survey';
     let out = '<div style="--ac:' + col + ';--acg:' + tint(col, .1) + '">' + Layout.crumbs(a ? '<span class="crumb-tag">' + h(a.title) + '</span>' : '<span class="crumb-tag">' + (isSurvey ? 'ختام البرنامج' : 'أنشطة') + '</span>') +
       (e.image ? '<img class="ex-img" src=\"' + imgSrc(e.image) + '\" alt="">' : '') +
-      '<div class="ex-head"><div class="ico">' + h(e.icon || '✍️') + '</div><div><h1>' + h(e.title) + '</h1><div class="row" style="margin-top:4px"><span class="pill">' + (e.mode === 'group' ? '👥 جماعي' : '👤 فردي') + '</span>' + (e.format !== 'text' ? '<span class="pill">' + h(FORMATS[e.format]) + '</span>' : '') + '</div></div></div>';
+      '<div class="ex-head"><div class="ico">' + h(e.icon || '✍️') + '</div><div><h1>' + h(e.title) + '</h1><div class="row" style="margin-top:4px"><span class="pill">' + (e.mode === 'group' ? '👥 جماعي' : '👤 فردي') + '</span>' + (e.format !== 'text' ? '<span class="pill">' + h(FORMATS[e.format]) + '</span>' : '') + '</div></div></div>' +
+      (Admin.ok() ? '<div class="live-row ex-live">' + Presence.chip(e.id) + Invite.btn(e) + '</div>' : '');
     if (isSurvey) {
       out += '<div class="ex-block task"><div class="lbl">📝 قيّم تجربتك</div>' + richHtml(e.task) + '</div>' + '<div id="ansZone">' + surveyFormHtml(e) + '</div><div id="feedZone">' + surveyFeedHtml(e) + '</div></div>';
       return out;

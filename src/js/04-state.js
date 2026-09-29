@@ -3,6 +3,7 @@
 // المصفوفة الأصلية COURSE لا تُعدَّل أبدًا؛ كل تعديل يُحفظ كتراكب منفصل.
 // ---------------------------------------------------------------------
 const Store = {
+  removed: { axes: {}, ex: {} }, presence: {}, invite: null,
   contentAxes: {}, contentEx: {}, addedAxes: {}, addedEx: {}, visibility: {}, enabled: {}, order: [],
   site: {}, groupCount: DEFAULT_GROUPS, groupNames: {}, assign: {}, users: {}, posts: {}, reveal: {},
   labTimers: {}, labAnswers: {}, broadcast: null, resetStamp: 0, registered: 0, ready: false,
@@ -90,9 +91,10 @@ const Content = {
   isHidden(id) { return Store.visibility && Store.visibility[id] === false; },
   isEnabled(id) { return !(Store.enabled && Store.enabled[id] === false); },
   color(a) { return AXIS_COLORS[((a && a.color) || 0) % AXIS_COLORS.length]; },
+  isRemoved(kind, id) { return !!(Store.removed && Store.removed[kind] && Store.removed[kind][id]); },
   mergeAxis(id) {
     const def = DEF_AXIS[id], added = Store.addedAxes[id];
-    if (!def && !added) return null;
+    if ((!def && !added) || Content.isRemoved('axes', id)) return null;
     let a;
     if (def) {
       const ov = Store.contentAxes[id];
@@ -116,7 +118,8 @@ const Content = {
   axis(id) { return Content.mergeAxis(id); },
   mergeEx(id) {
     const def = DEF_EX[id], added = Store.addedEx[id];
-    if (!def && !added) return null;
+    if ((!def && !added) || Content.isRemoved('ex', id)) return null;
+    const ax = def ? def.axis : added && added.axis; if (ax && Content.isRemoved('axes', ax)) return null;
     let e;
     if (def) { const ov = Store.contentEx[id]; e = Object.assign({}, def, ov || {}, { id, _modified: !!ov, _added: false }); }
     else e = Object.assign({ format: 'text', mode: 'individual', steps: [] }, added, { id, _added: true, _modified: false });
@@ -248,7 +251,8 @@ const DEFAULT_PRIVACY = {
 const Groups = {
   count() { const n = parseInt(Store.groupCount, 10); return isFinite(n) && n >= 2 ? Math.min(30, n) : DEFAULT_GROUPS; },
   list() { const out = []; for (let i = 1; i <= Groups.count(); i++) out.push(i); return out; },
-  label(n) { const nm = Store.groupNames && Store.groupNames[n]; return nm ? 'مجموعة ' + n + ' · ' + nm : 'مجموعة ' + n; },
+  label(n) { if (!(+n > 0)) return 'الإدارة'; // مفتاح مشاركة الإدارة (admin) في التمارين الجماعية
+    const nm = Store.groupNames && Store.groupNames[n]; return nm ? 'مجموعة ' + n + ' · ' + nm : 'مجموعة ' + n; },
   assignedOf(uid) { const v = Store.assign && Store.assign[uid]; return v ? +v : null; },
   membersOf(n) { return Object.keys(Store.assign || {}).filter(u => +Store.assign[u] === +n); },
   anyAssign() { return Object.keys(Store.assign || {}).length > 0; }
@@ -279,7 +283,18 @@ const Me = {
     if (d && !d._fromHash) Me.save(d);
     return d;
   },
+  // هوية الإدارة: المدرب يتصفح المنصة ويشارك في كل التمارين باسم «الإدارة» (هوية في الذاكرة فقط، لا تُحفظ على الجهاز
+  // ولا تُكتب في users). عند خروجه تعود هوية المتدرب المحفوظة على الجهاز إن وُجدت.
+  ADMIN_UID: 'admin',
+  sync() {
+    const adm = Admin.ok(); const cur = Me.data && Me.data.admin;
+    if (adm && !cur) { Me._stash = { data: Me.data, guest: Me.guest }; Me.data = { uid: Me.ADMIN_UID, name: 'الإدارة', role: 'المدرب', admin: true }; Me.guest = false; }
+    else if (!adm && cur) { const st = Me._stash; Me._stash = null; Me.data = st ? st.data : null; Me.guest = st ? st.guest : false; if (!st) Me.load(); }
+  },
+  isAdmin() { return !!(Me.data && Me.data.admin); },
   save(d) {
+    if (d && d.admin) { Me.data = d; return; }
+    if (Me.isAdmin()) { Me._stash = { data: d, guest: false }; return; }
     Me.data = d; Me.guest = false; const s = JSON.stringify(d);
     SafeLS.set('ec_me', s); SafeSS.set('ec_me', s); Cookie.set('ec_me', s);
     SafeLS.del('ec_guest'); SafeSS.del('ec_guest');
@@ -294,7 +309,7 @@ const Me = {
   uid() { return Me.data ? Me.data.uid : null; },
   isReg() { return !!(Me.data && Me.data.uid); },
   group() { return Me.data && Me.data.group ? +Me.data.group : null; },
-  setGroup(n) { if (!Me.data) return; Me.data.group = n; Me.save(Me.data); DB.update('users/' + Me.data.uid, { group: n, gkey: 'g' + n }); }
+  setGroup(n) { if (!Me.data) return; if (Me.isAdmin()) { UI.toast('تشارك الإدارة باسمها دون الانضمام لمجموعة'); return; } Me.data.group = n; Me.save(Me.data); DB.update('users/' + Me.data.uid, { group: n, gkey: 'g' + n }); }
 };
 
 // ---------- الإنجاز والأوسمة ----------

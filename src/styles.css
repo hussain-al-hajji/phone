@@ -1413,3 +1413,15 @@ html[data-theme="dark"] .banner-offline{background:#3B2A10;color:#FFD98A;border-
 .imp-row small{display:block;color:var(--ink-3);font-size:11.5px}
 @media (max-width:520px){.fix-cards{grid-template-columns:1fr}.sim-meter{grid-template-columns:100px 1fr 30px}}
 .sim-cbs.col .sim-cb{white-space:normal!important}
+
+/* ===== الأزرار العلوية حسب الدور + دخول المدرب + الحضور الحي والدعوة ===== */
+.top-actions .icon-btn{color:var(--ink-2)}.top-actions .icon-btn:hover{border-color:var(--brand);color:var(--brand)}
+.cp-btn{gap:6px}
+.trainer-door{display:flex;justify-content:center;margin-top:18px}
+.trainer-btn{width:30px;height:30px;border-radius:50%;border:1px solid transparent;background:transparent;color:var(--ink-3);opacity:.45;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:opacity .2s,border-color .2s}
+.trainer-btn:hover,.trainer-btn:focus-visible{opacity:1;border-color:var(--line)}
+.live-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px}.ex-live{margin:10px 0 0}
+.live-chip{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface-2);font-family:var(--f-ui);font-size:12.5px;color:var(--ink-3);cursor:pointer}
+.live-chip b{font-family:var(--f-ui);font-size:14px;color:var(--ink-2)}
+.live-chip .live-dot{background:#9AA3B2;animation:none}.live-chip.on{border-color:var(--ok);background:var(--ok-bg);color:#10573A}.live-chip.on b{color:#10573A}.live-chip.on .live-dot{background:var(--ok);animation:pulse 1.6s infinite}
+.invite-title{font-family:var(--f-display);font-weight:800;font-size:20px;margin:6px 0 2px}

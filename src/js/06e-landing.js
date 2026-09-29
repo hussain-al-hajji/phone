@@ -147,7 +147,7 @@ function loginFormHtml() {
 }
 // صفحة دخول مستقلة للمشاريع التي لا تستخدم الصفحة التعريفية (HAS_LANDING = false)
 Views.login = {
-  html() { return '<div class="login-page">' + loginFormHtml().replace(/<button class="lpop-x"[^>]*>[^<]*<\/button>/, '') + '</div>'; },
+  html() { return '<div class="login-page">' + loginFormHtml().replace(/<button class="lpop-x"[^>]*>[^<]*<\/button>/, '') + '<div class="trainer-door"><button class="trainer-btn" data-act="admin-enter" title="دخول المدرب" aria-label="دخول المدرب">' + iconSvg('lock', 14) + '</button></div></div>'; },
   after(root) { const first = $('.login-page input', root); if (first && !Views.login._focused) { Views.login._focused = true; try { first.focus({ preventScroll: true }); } catch (e) {} } }
 };
 const LoginModal = {

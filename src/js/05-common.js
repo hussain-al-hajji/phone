@@ -6,8 +6,8 @@ const UIState = { deck: {}, openAcc: new Set(), openDrop: new Set(), draft: {}, 
 const AUTH = { enabled: false, resolved: true, user: null, isAdmin: false };
 const Admin = {
   ok() { return AUTH.enabled ? AUTH.isAdmin : SafeSS.get('ec_admin') === '1'; },
-  preview() { return SafeSS.get('ec_preview') === '1'; },
-  ctl() { return Admin.ok() && !Admin.preview(); }
+  preview() { return false; }, // أُلغي وضع «المعاينة كمتدرب»: المدرب يتصفح المنصة بحسابه مع إتاحة كل التمارين
+  ctl() { return Admin.ok(); }
 };
 
 const Router = {
@@ -47,15 +47,18 @@ const Layout = {
     return '<header class="topbar"><div class="wrap">' +
       // الشعار يقود دائمًا إلى الصفحة التعريفية؛ العنوان الكامل يظهر فيها فقط، وفي بقية الصفحات كلمة «الواجهة»
       '<div class="brand' + (!HAS_LANDING || App.onLanding ? '' : ' brand-min') + '" data-go="' + (HAS_LANDING ? 'landing' : 'home') + '" title="' + (HAS_LANDING ? 'الصفحة التعريفية بالبرنامج' : 'الرئيسية') + '" role="link" tabindex="0"><div class="brand-logo">' + iconSvg('store', 22, '#fff', 2.2) + '</div><div class="brand-text">' + (!HAS_LANDING || App.onLanding ? '<div class="brand-title" id="brandTitle">' + h(s.headerTitle) + '</div><div class="brand-sub">' + h(s.headerSub) + '</div>' : '<div class="brand-title brand-short">الواجهة</div>') + '</div></div>' +
-      '<div class="top-actions">' +
-      (me ? '<button class="user-chip" data-go="account" title="حسابي — ' + h(me.name) + '"><span class="av">' + iconSvg('user', 16, '#fff') + '</span><span class="uc-txt"><span class="nm">' + h(String(me.name || '').trim().split(/\s+/)[0]) + '</span><span class="uc-sub">حسابي</span></span></button>' : (Me.guest ? '<span class="pill">👀 زائر</span>' : '')) +
-      (!me && !Me.guest ? (!App.onLanding ? '' : '<button class="btn btn-primary btn-sm top-cta" data-act="open-login"><span class="cta-l">الدخول للمنصة التعليمية</span><span class="cta-s">الدخول</span> <span class="lp-arrow">←</span></button>') :
-        (App.onLanding ? '<button class="btn btn-primary btn-sm top-cta" data-act="lp-enter"><span class="cta-l">الدخول للمنصة التعليمية</span><span class="cta-s">المنصة</span> <span class="lp-arrow">←</span></button>' : '') +
-        '<button class="btn btn-ghost btn-sm" data-act="switch-user" title="تسجيل مستخدم جديد (يعيدك إلى الصفحة التعريفية)">' + iconSvg('users', 16) + '<span class="lbl">مستخدم جديد</span></button>') +
-      '<button class="btn btn-ghost btn-sm notranslate" translate="no" data-act="prefs" title="إعدادات العرض: الوضع الليلي وحجم الخط والتباين" aria-label="إعدادات العرض">Aa</button>' +
-      Translate.button() +
-      '<button class="icon-btn" data-act="admin-enter" title="لوحة الإدارة">' + iconSvg('gear', 18) + '</button>' +
+      '<div class="top-actions">' + Layout.actions() +
       '</div></div></header>';
+  },
+  // أزرار أعلى الصفحة حسب الدور: المدرب (لوحة التحكم)، المتدرب (حسابي)، الزائر (تسجيل دخول) — والباقي أيقونات بلا نص
+  actions() {
+    const me = Me.data; const onLogin = !me && !Me.guest && !Admin.ok();
+    const aa = '<button class="icon-btn notranslate" translate="no" data-act="prefs" title="إعدادات العرض: الوضع الليلي وحجم الخط والتباين" aria-label="إعدادات العرض"><b style="font-family:var(--f-ui);font-size:14px">Aa</b></button>';
+    const out = '<button class="icon-btn" data-act="' + (Admin.ok() ? 'admin-exit' : 'logout') + '" title="تسجيل الخروج" aria-label="تسجيل الخروج">' + iconSvg('logout', 18) + '</button>';
+    if (Admin.ok()) return '<button class="btn btn-primary btn-sm cp-btn" data-go="admin" title="لوحة التحكم">' + iconSvg('gear', 16, '#fff') + '<span class="lbl">لوحة التحكم</span></button>' + Translate.button() + aa + out;
+    if (me) return '<button class="user-chip" data-go="account" title="حسابي — ' + h(me.name) + '"><span class="av">' + iconSvg('user', 16, '#fff') + '</span><span class="uc-txt"><span class="nm">' + h(String(me.name || '').trim().split(/\s+/)[0]) + '</span><span class="uc-sub">حسابي</span></span></button>' + Translate.button() + aa + out;
+    if (Me.guest) return Translate.button() + aa + '<button class="btn btn-primary btn-sm" data-act="guest-login" title="تسجيل الدخول">' + iconSvg('login', 16, '#fff') + '<span class="lbl">تسجيل دخول</span></button>';
+    return onLogin && App.onLanding ? Translate.button() + aa + '<button class="btn btn-primary btn-sm top-cta" data-act="open-login"><span class="cta-l">الدخول للمنصة التعليمية</span><span class="cta-s">الدخول</span> <span class="lp-arrow">←</span></button>' : Translate.button() + aa;
   },
   banners() {
     let out = '';
@@ -118,7 +121,7 @@ try { window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change
 const Translate = {
   LANGS: [['en', 'English'], ['fr', 'Français'], ['ur', 'اردو'], ['hi', 'हिन्दी'], ['tl', 'Filipino'], ['ml', 'മലയാളം'], ['es', 'Español'], ['tr', 'Türkçe']],
   cur() { const m = (Cookie.get('googtrans') || '').match(/^\/ar\/([a-zA-Z-]+)$/); return m ? m[1] : 'ar'; },
-  button() { const c = Translate.cur(); return '<button class="btn btn-ghost btn-sm notranslate" translate="no" data-act="translate" title="ترجمة آلية للمحتوى عبر Google Translate">🌐<span class="lbl">' + (c === 'ar' ? 'ترجمة' : 'العربية') + '</span></button>'; },
+  button() { const c = Translate.cur(); return '<button class="icon-btn notranslate" translate="no" data-act="translate" title="' + (c === 'ar' ? 'ترجمة آلية للمحتوى عبر Google Translate' : 'العودة إلى العربية') + '" aria-label="ترجمة">' + iconSvg('globe', 18) + '</button>'; },
   load() {
     if (Translate._loaded) return; Translate._loaded = true;
     if (!document.getElementById('gt_el')) { const d = document.createElement('div'); d.id = 'gt_el'; d.style.display = 'none'; document.body.appendChild(d); }

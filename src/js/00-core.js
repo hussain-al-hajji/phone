@@ -140,7 +140,7 @@ const DB = (function () {
       // تعذر تحميل مكتبة الاتصال: لا تخزين محلي ولا كتابة — القراءة تنتظر، والكتابة تُرفض برسالة واضحة
       status.lib = false;
       const fail = () => Promise.reject(new Error('تعذر تحميل مكتبة الاتصال بقاعدة البيانات'));
-      return { real: true, status, onStatus(fn) { status.listeners.push(fn); }, markReady() {}, watch() { return () => {}; }, get() { return new Promise(() => {}); }, set: fail, update: fail, remove: fail, push: fail, transaction: fail, now() { return Date.now(); } };
+      return { real: true, status, onStatus(fn) { status.listeners.push(fn); }, markReady() {}, watch() { return () => {}; }, get() { return new Promise(() => {}); }, set: fail, update: fail, remove: fail, push: fail, transaction: fail, presence: fail, unpresence: fail, now() { return Date.now(); } };
     }
     firebase.initializeApp(Object.fromEntries(Object.entries(firebaseConfig).filter(([k, v]) => v && k !== 'appCheckSiteKey')));
     // App Check يُفعَّل قبل أي استخدام للقاعدة أو الدخول، حتى تُرفق كل الطلبات بشهادة أنها من موقعنا الحقيقي
@@ -164,6 +164,9 @@ const DB = (function () {
       remove(path, o) { const g = guard('remove', path, null, o); if (g) return g; return track(db.ref(norm(path)).remove(), path, o); },
       push(path, v) { const g = guard('push', path); if (g) return g; const r = db.ref(norm(path)).push(); return track(r.set(clean(v)), path).then(() => r.key); },
       transaction(path, fn, o) { const g = guard('transaction', path, null, o); if (g) return g; return track(db.ref(norm(path)).transaction(fn).then(r => r.snapshot.val()), path, o); },
+      // سجل حضور مؤقت: يُحذف تلقائيًا من الخادم عند انقطاع اتصال المتصفح أو إغلاقه
+      presence(path, v) { if (!status.ready) return Promise.resolve(); const ref = db.ref(norm(path)); return ref.onDisconnect().remove().then(() => ref.set(clean(v))); },
+      unpresence(path) { const ref = db.ref(norm(path)); return ref.onDisconnect().cancel().catch(() => {}).then(() => ref.remove()); },
       now() { return Date.now() + offset; }
     };
   }
@@ -187,6 +190,8 @@ const DB = (function () {
   const clone = v => v == null ? null : JSON.parse(JSON.stringify(v));
   window.addEventListener('storage', e => { if (e.key === KEY) { try { tree = JSON.parse(e.newValue || '{}') || {}; } catch (er) {} notify(''); } });
   status.connected = true;
+  const presencePaths = new Set(); // تُحذف عند إغلاق التبويب (بديل onDisconnect في وضع المحاكاة)
+  window.addEventListener('pagehide', () => { presencePaths.forEach(p => setAt(p, null)); if (presencePaths.size) persist(); });
   const lguard = (op, path, obj, o) => { const p = norm(path); if (!p && op !== 'update') throw new Error('DB: ممنوع ' + op + ' على جذر القاعدة'); if (op === 'update') Object.keys(obj || {}).forEach(k => { const full = norm((p ? p + '/' : '') + k); if (!full) throw new Error('DB: مفتاح فارغ'); if (!p && full.indexOf('/') === -1 && !(o && o.allowTopLevel)) throw new Error('DB: استبدال العقدة «' + full + '» كاملة غير مسموح هنا'); }); };
   return {
     real: false, status,
@@ -202,6 +207,8 @@ const DB = (function () {
     remove(path, o) { lguard('remove', path, null, o); setAt(path, null); persist(); notify(path); return Promise.resolve(); },
     push(path, v) { const k = genId('k'); return this.set(norm(path) + '/' + k, v).then(() => k); },
     transaction(path, fn) { const nv = fn(clone(getAt(path))); if (nv !== undefined) { setAt(path, nv); persist(); notify(path); } return Promise.resolve(clone(getAt(path))); },
+    presence(path, v) { if (!status.ready) return Promise.resolve(); presencePaths.add(norm(path)); return this.set(path, v); },
+    unpresence(path) { presencePaths.delete(norm(path)); return this.remove(path); },
     now() { return Date.now(); }
   };
 })();

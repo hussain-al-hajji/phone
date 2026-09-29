@@ -7,6 +7,7 @@ const App = {
   inIframe: (() => { try { return window.self !== window.top; } catch (e) { return true; } })(),
   render() {
     const root = document.getElementById('app'); if (!root) return;
+    Me.sync();
     // أثناء عرض الشريحة بملء الشاشة لا نعيد رسم الصفحة (إعادة الرسم تُخرج العنصر من ملء الشاشة)؛ نؤجلها حتى الخروج
     if (document.fullscreenElement && document.fullscreenElement.matches && document.fullscreenElement.matches('.deck')) { App._pendingRender = true; return; }
     let v = Router.cur.view;
@@ -21,8 +22,7 @@ const App = {
     if (App.onLanding && !App._wasLanding) { Views.landing._played = false; Views.landing._seen = new Set(); Views.landing._counted = false; } App._wasLanding = App.onLanding;
     let body = '';
     try { body = view.html(); } catch (e) { console.error(e); body = '<div class="empty" style="margin-top:24px">حدث خطأ في عرض هذه الصفحة. <button class="btn btn-soft btn-sm" data-go="home">' + HOME_LABEL + '</button></div>'; }
-    const html = (v === 'present' && view === Views.present) || (v === 'show' && view === Views.show) ? body : Layout.banners() + Layout.topbar() + '<main class="wrap">' + body + '</main>' + Layout.footer() +
-      (Admin.ok() && Admin.preview() ? '<button class="float-badge" data-act="preview-exit">↩ العودة للوحة الإدارة</button>' : '');
+    const html = (v === 'present' && view === Views.present) || (v === 'show' && view === Views.show) ? body : Layout.banners() + Layout.topbar() + '<main class="wrap">' + body + '</main>' + Layout.footer();
     // صفحة الهبوط: لا نعيد رسمها إن لم يتغير شيء حتى لا تتكرر الحركات مع كل تحديث للبيانات
     if (App.onLanding && html === App._lastLanding && root.firstChild) return;
     App._lastLanding = App.onLanding ? html : null;
@@ -31,6 +31,7 @@ const App = {
     $$('[data-filter]', root).forEach(applyFilter);
     $$('textarea:not([maxlength])', root).forEach(t => { t.maxLength = 4000; }); $$('input[type=text]:not([maxlength]),input:not([type]):not([maxlength])', root).forEach(t => { t.maxLength = 250; });
     document.title = (Content.site().headerTitle || 'الدورة');
+    Presence.update(); Invite.check(); Presence.refreshModal();
   },
   onData: debounce(() => {
     if (FORM_VIEWS.indexOf(Router.cur.view) > -1) return; // لا نعيد رسم نماذج التحرير أثناء الكتابة
@@ -62,7 +63,8 @@ function watchDefs() {
     'site': v => { Store.site = v || {}; },
     'settings': v => { v = v || {}; Store.groupCount = v.groups && v.groups.count ? v.groups.count : DEFAULT_GROUPS; Store.groupNames = v.groupNames || {}; Store.assessCfg = v.assess || {}; Store.attCfg = v.attendance || {}; Store.cohortCfg = v.cohort || {}; Store.presentCfg = v.present || {}; },
     'assign': v => { Store.assign = v || {}; },
-    'users': v => { Store.usersPub = v || {}; mergeUsers(); },
+    'users': v => { Store.usersPub = v || {}; mergeUsers();
+      const me = Me.data; if (me && !me.admin && me.uid) { if (Store.usersPub[me.uid]) Me._seenInUsers = me.uid; else if (Me._seenInUsers === me.uid) accountGoneCheck(me.uid); } },
     'posts': v => { Store.posts = v || {}; },
     'reveal': v => { Store.reveal = v || {}; },
     'lab': v => { v = v || {}; Store.labTimers = v.timers || {}; Store.labAnswers = v.answers || {}; },
@@ -70,10 +72,13 @@ function watchDefs() {
     'stats/registered': v => { Store.registered = Number(v) || 0; },
     'meta/resetStamp': v => {
       Store.resetStamp = Number(v) || 0;
-      if (Me.data && Store.resetStamp && (Me.data.ts || 0) < Store.resetStamp) { Me.clear(); UIState.draft = {}; UIState.editing = {}; setTimeout(() => UI.toast('تمت إعادة ضبط البرنامج — سجّل اسمك من جديد'), 300); syncWatchers(); }
+      if (Me.data && !Me.isAdmin() && Store.resetStamp && (Me.data.ts || 0) < Store.resetStamp) { Me.clear(); UIState.draft = {}; UIState.editing = {}; setTimeout(() => UI.toast('تمت إعادة ضبط البرنامج — سجّل اسمك من جديد'), 300); syncWatchers(); }
     }
   };
   const pub = Object.keys(d);
+  // عقد عامة إضافية لا تنتظرها الواجهة (حتى لا تتعطل المنصة قبل نشر قواعد الأمان المحدّثة)
+  d['removed'] = v => { v = v || {}; Store.removed = { axes: v.axes || {}, ex: v.ex || {} }; };
+  d['invite'] = v => { Store.invite = v || null; setTimeout(Invite.check, 0); };
   const me = Me.uid();
   if (Admin.ok()) {
     Object.assign(d, {
@@ -83,7 +88,8 @@ function watchDefs() {
       'backupIndex': v => { Store.backupIndex = v || {}; },
       'cohortIndex': v => { Store.cohortIndex = v || {}; },
       'secure': v => { Store.secure = v || {}; },
-      'secrets': v => { Store.secrets = v || {}; }
+      'secrets': v => { Store.secrets = v || {}; },
+      'presence': v => { Store.presence = v || {}; }
     });
   } else if (me) {
     d['private/' + me] = v => { Store.priv = v ? { [me]: v } : {}; mergeUsers(); };
@@ -94,6 +100,7 @@ function watchDefs() {
   return { defs: d, pub };
 }
 function syncWatchers() {
+  Me.sync();
   const { defs, pub } = watchDefs(); Watch.publicPaths = pub;
   Object.keys(Watch.active).forEach(p => { if (!defs[p]) { try { Watch.active[p](); } catch (e) {} delete Watch.active[p]; } });
   if (!Admin.ok()) { Store.backupIndex = {}; Store.cohortIndex = {}; Store.secure = {}; Store.secrets = {}; if (!Me.uid()) { Store.priv = {}; Store.leads = {}; Store.followups = {}; Store.mySecret = ''; mergeUsers(); } }
@@ -134,15 +141,30 @@ async function doRegister() {
   } catch (e) { UI.alert('تعذر التسجيل: ' + h(e.message || e)); if (btn) { btn.disabled = false; btn.textContent = 'ابدأ 🚀'; } }
 }
 function privacyModal() { const pv = Content.privacy(); const m = UI.modal('<h3>🔒 إشعار الخصوصية</h3><div style="line-height:1.9">' + richHtml(pv.text) + '</div><div class="actions"><button class="btn btn-primary" data-x>حسنًا</button></div>', { wide: true }); $('[data-x]', m.el).onclick = () => m.close(); }
-// حذف كل بيانات المتدرب من السيرفر (حق المستخدم في حذف بياناته)
-async function deleteMyData() {
-  const ok = await UI.confirm('سيُحذف نهائيًا من السيرفر: بياناتك، ومشاركاتك الفردية، ونتائج تقييماتك، وسجل حضورك، واهتماماتك، ومتابعاتك، وإعجاباتك. إجابات المجموعات تبقى باسم المجموعة مع إزالة اسمك منها. لا يمكن التراجع، ولن تتمكن من الحصول على الشهادة.', { danger: true, ok: 'احذف بياناتي نهائيًا', title: 'حذف بياناتي' });
-  if (!ok) return; const uid = Me.uid(); const upd = {};
+// حذف المدرب حساب هذا المتدرب: نتأكد من الخادم بعد لحظات (تجاهلًا لأي تغيير محلي عابر) ثم نسجّل الخروج من الجهاز
+function accountGoneCheck(uid) {
+  if (accountGoneCheck.busy) return; accountGoneCheck.busy = true;
+  setTimeout(async () => {
+    accountGoneCheck.busy = false; if (!Me.data || Me.data.uid !== uid || (Store.usersPub || {})[uid]) return;
+    let u = null; try { u = await DB.get('users/' + uid); } catch (e) { return; } if (u || !Me.data || Me.data.uid !== uid) return;
+    Me._seenInUsers = null; Presence.leave(); Me.clear(); UIState.draft = {}; UIState.editing = {}; syncWatchers(); App.render();
+    UI.alert('حذف المدرب هذا الحساب من المنصة. يمكنك التسجيل من جديد.', 'تم حذف الحساب');
+  }, 1500);
+}
+// كل مسارات بيانات متدرب واحد (تُستخدم لحذف المتدرب بياناته بنفسه، ولحذف المدرب حسابًا محددًا من قائمة المسجلين)
+function purgeUserUpdates(uid) {
+  const upd = {};
   upd['users/' + uid] = null; upd['assess/pre/' + uid] = null; upd['assess/post/' + uid] = null; upd['attendance/' + uid] = null; upd['assign/' + uid] = null; upd['leads/' + uid] = null;
   ['30', '60', '90'].forEach(n => { upd['followups/d' + n + '/' + uid] = null; });
   upd['private/' + uid] = null; upd['secrets/' + uid] = null; upd['devices/' + uid] = null; Attend.days().forEach(d => { upd['checkins/d' + d + '/' + uid] = null; });
   Object.keys(Store.posts || {}).forEach(ex => { const ps = Store.posts[ex] || {}; Object.keys(ps).forEach(k => { const p = ps[k] || {}; if (k === uid) upd['posts/' + ex + '/' + k] = null; else { if (p.members && p.members[uid]) upd['posts/' + ex + '/' + k + '/members/' + uid] = null; if (p.likes && p.likes[uid]) upd['posts/' + ex + '/' + k + '/likes/' + uid] = null; if (p.by === uid) upd['posts/' + ex + '/' + k + '/name'] = ''; } }); });
   Object.keys(Store.storyLikes || {}).forEach(st => { if (((Store.storyLikes[st] || {}).likes || {})[uid]) upd['storyLikes/' + st + '/likes/' + uid] = null; });
+  return upd;
+}
+// حذف كل بيانات المتدرب من السيرفر (حق المستخدم في حذف بياناته)
+async function deleteMyData() {
+  const ok = await UI.confirm('سيُحذف نهائيًا من السيرفر: بياناتك، ومشاركاتك الفردية، ونتائج تقييماتك، وسجل حضورك، واهتماماتك، ومتابعاتك، وإعجاباتك. إجابات المجموعات تبقى باسم المجموعة مع إزالة اسمك منها. لا يمكن التراجع، ولن تتمكن من الحصول على الشهادة.', { danger: true, ok: 'احذف بياناتي نهائيًا', title: 'حذف بياناتي' });
+  if (!ok) return; const uid = Me.uid(); const upd = purgeUserUpdates(uid); Me._seenInUsers = null;
   await DB.update('', upd); DB.transaction('stats/registered', c => Math.max(0, (Number(c) || 0) - 1));
   Me.clear(); UIState.draft = {}; UIState.editing = {}; Router.go('home'); UI.toast('تم حذف بياناتك نهائيًا');
 }
@@ -175,7 +197,7 @@ async function saveText(exId) {
   if (!text) { UI.alert('اكتب إجابتك أولًا.'); return; }
   const key = postKey(e); if (!key) return;
   const me = Me.data; const upd = { text, name: me.name, role: me.role || '', ts: DB.now() };
-  if (e.mode === 'group') { upd.group = Me.group(); upd.by = me.uid; upd['members/' + me.uid] = true; } else upd.uid = me.uid;
+  if (e.mode === 'group' && !me.admin) { upd.group = Me.group(); upd.by = me.uid; upd['members/' + me.uid] = true; } else upd.uid = me.uid;
   await DB.update('posts/' + exId + '/' + key, upd);
   if (ta) ta.value = ''; UIState.editing[exId] = false; UI.toast('✅ تم الحفظ'); App.render();
 }
@@ -185,7 +207,7 @@ async function saveInter(exId) {
   if (missing) { UI.alert(e.format === 'fillblank' ? 'املأ كل الفراغات قبل الإرسال.' : 'أجب عن كل الأسئلة قبل الحفظ.'); return; }
   const key = postKey(e); if (!key) return; const me = Me.data;
   const upd = { answers: e.items.map((_, i) => d[i]), name: me.name, role: me.role || '', ts: DB.now() };
-  if (e.mode === 'group') { upd.group = Me.group(); upd.by = me.uid; upd['members/' + me.uid] = true; } else upd.uid = me.uid;
+  if (e.mode === 'group' && !me.admin) { upd.group = Me.group(); upd.by = me.uid; upd['members/' + me.uid] = true; } else upd.uid = me.uid;
   await DB.update('posts/' + exId + '/' + key, upd);
   UIState.editing[exId] = false; UIState.draft[exId] = upd.answers.slice(); UI.toast(e.mode === 'group' ? '📤 أُرسلت إجابات المجموعة' : '✅ تم حفظ إجاباتك'); App.render();
 }
@@ -261,20 +283,23 @@ document.addEventListener('click', async ev => {
   switch (act) {
     // ----- عام -----
     case 'switch-user': { const ok = await UI.confirm('سيُمسح تسجيلك من هذا الجهاز فقط (لن يُحذف أي شيء من السيرفر)، وستعود إلى ' + (HAS_LANDING ? 'الصفحة التعريفية للبرنامج' : 'صفحة الدخول') + ' لتسجيل مستخدم جديد أو الدخول برقم العضوية.', { ok: 'تسجيل مستخدم جديد' }); if (ok) { Me.clear(); UIState.draft = {}; UIState.editing = {}; syncWatchers(); Router.go('home'); window.scrollTo(0, 0); } break; }
+    case 'logout': { const ok = await UI.confirm('تسجيل الخروج من هذا الجهاز؟ لن يُحذف شيء من بياناتك أو مشاركاتك. للعودة لاحقًا استخدم رقم العضوية ورمز الدخول الشخصي من صفحة «حسابي».', { ok: 'تسجيل الخروج' }); if (ok) { Presence.leave(); Me.clear(); UIState.draft = {}; UIState.editing = {}; syncWatchers(); Router.go('home'); window.scrollTo(0, 0); } break; }
+    case 'guest-login': Presence.leave(); Me.clear(); syncWatchers(); Router.go('home'); window.scrollTo(0, 0); break;
     case 'open-login': LoginModal.open(); break;
+    case 'presence-show': Presence.show(exId); break;
+    case 'invite-send': Invite.send(id); break;
+    case 'invite-cancel': Invite.cancel(); break;
     case 'lp-enter': Router.go('home'); window.scrollTo(0, 0); break;
     case 'lp-scroll': { const n = document.querySelector('.lp-hero'); const nx = n && n.nextElementSibling; if (nx) window.scrollTo({ top: nx.getBoundingClientRect().top + window.scrollY - 70, behavior: document.documentElement.getAttribute('data-motion') === 'reduce' ? 'auto' : 'smooth' }); break; }
     case 'lp-unit': { UIState.lpUnit = +t.getAttribute('data-i'); const old = document.querySelector('.lp-content'); if (old) { const tmp = document.createElement('div'); tmp.innerHTML = LandingSections.content(Landing.sec('content')); const nw = tmp.firstChild; $$('.rv', nw).forEach(e => e.classList.add('in')); old.replaceWith(nw); App._lastLanding = null; } break; }
     case 'admin-enter': {
-      if (Admin.ok()) { SafeSS.del('ec_preview'); Router.go('admin'); break; }
+      if (Admin.ok()) { Router.go('admin'); break; }
       if (AUTH.enabled) { adminLogin(); break; }
-      const v = await UI.prompt('أدخل الرمز السري للوحة الإدارة', { title: '🔐 لوحة الإدارة', type: 'password', inputmode: 'numeric', ok: 'دخول' });
-      if (v == null) break; if (v.trim() === ADMIN_PASS) { SafeSS.set('ec_admin', '1'); SafeSS.del('ec_preview'); Router.go('admin'); } else UI.alert('الرمز غير صحيح.');
+      const v = await UI.prompt('أدخل الرمز السري للوحة الإدارة', { title: '🔐 دخول المدرب', type: 'password', inputmode: 'numeric', ok: 'دخول' });
+      if (v == null) break; if (v.trim() === ADMIN_PASS) { SafeSS.set('ec_admin', '1'); Presence.leave(); LoginModal.close(); syncWatchers(); Router.go('home'); UI.toast('🛡️ أهلًا بك — زر «لوحة التحكم» أعلى الصفحة'); } else UI.alert('الرمز غير صحيح.');
       break;
     }
-    case 'admin-exit': SafeSS.del('ec_admin'); SafeSS.del('ec_preview'); if (AUTH.enabled) { AUTH.isAdmin = false; try { await firebase.auth().signOut(); } catch (e) {} } Router.go('home'); break;
-    case 'preview': SafeSS.set('ec_preview', '1'); Router.go('home'); break;
-    case 'preview-exit': SafeSS.del('ec_preview'); Router.go('admin'); break;
+    case 'admin-exit': { if (!(await UI.confirm('تسجيل خروج المدرب من هذا الجهاز؟', { ok: 'تسجيل الخروج' }))) break; SafeSS.del('ec_admin'); if (AUTH.enabled) { AUTH.isAdmin = false; try { await firebase.auth().signOut(); } catch (e) {} } Me.sync(); syncWatchers(); Router.go('home'); break; }
     case 'bc-close': SafeLS.set('ec_bc_closed', t.getAttribute('data-id')); App.render(); break;
     case 'register': doRegister(); break;
     case 'member-login': memberLogin(); break;
@@ -525,12 +550,30 @@ document.addEventListener('click', async ev => {
     case 'reset-axis': { if (await UI.confirm('استرجاع المحتوى الأصلي لهذا المحور؟ سيُحذف التراكب فقط (حالة الإظهار والتفعيل لا تتأثر).', { ok: 'استرجاع الافتراضي' })) DB.remove('content/axes/' + id); break; }
     case 'reset-ex': { if (await UI.confirm('استرجاع المحتوى الأصلي لهذا التمرين؟', { ok: 'استرجاع الافتراضي' })) DB.remove('content/ex/' + id); break; }
     case 'delete-axis': {
-      if (!(await UI.confirm('حذف نهائي لهذا المحور المُضاف وكل تمارينه المُضافة التابعة له؟ <b>لا رجعة في هذا الحذف.</b>', { danger: true, ok: 'حذف نهائي' }))) break;
-      const upd = { ['added/axes/' + id]: null, ['visibility/' + id]: null, ['enabled/' + id]: null };
-      Object.keys(Store.addedEx || {}).forEach(k => { if (Store.addedEx[k].axis === id) { upd['added/ex/' + k] = null; upd['posts/' + k] = null; upd['visibility/' + k] = null; } });
-      await DB.update('', upd); DB.set('order/axes', arr(Store.order).filter(x => x !== id)); UI.toast('تم الحذف'); break;
+      const a = Content.axis(id); if (!a) break; const exIds = Content.exIdsOf(id);
+      if (!(await UI.confirm('حذف المحور «' + h(a.title) + '» مع تمارينه (<span class="num">' + exIds.length + '</span>) وكل مشاركاتها؟ يختفي من المنصة ولوحة التحكم.' + (DEF_AXIS[id] ? '<br><span class="muted">محور أصلي: يمكن استرجاع محتواه لاحقًا من «المحذوفات»، أما المشاركات فتُحذف نهائيًا.</span>' : '<br><b>محور مُضاف: لا رجعة في هذا الحذف.</b>'), { danger: true, ok: 'حذف المحور' }))) break;
+      const upd = { ['visibility/' + id]: null, ['enabled/' + id]: null, ['content/axes/' + id]: null, ['order/ex/' + id]: null };
+      if (DEF_AXIS[id]) upd['removed/axes/' + id] = true; else upd['added/axes/' + id] = null;
+      exIds.forEach(k => { upd['posts/' + k] = null; upd['visibility/' + k] = null; upd['reveal/' + k] = null; upd['content/ex/' + k] = null; upd['presence/' + k] = null; if (!DEF_EX[k]) upd['added/ex/' + k] = null; });
+      if (Store.invite && exIds.indexOf(Store.invite.ex) > -1) upd['invite'] = null;
+      await DB.update('', upd, { allowTopLevel: true }); DB.set('order/axes', arr(Store.order).filter(x => x !== id)); UI.toast('🗑 حُذف المحور'); break;
     }
-    case 'delete-ex': { if (await UI.confirm('حذف نهائي لهذا العنصر المُضاف ومشاركاته؟ <b>لا رجعة في هذا الحذف.</b>', { danger: true, ok: 'حذف نهائي' })) DB.update('', { ['added/ex/' + id]: null, ['posts/' + id]: null, ['visibility/' + id]: null, ['reveal/' + id]: null }); break; }
+    case 'delete-ex': {
+      const e = Content.ex(id); if (!e) break;
+      if (!(await UI.confirm('حذف التمرين «' + h(e.title) + '» وكل مشاركاته؟' + (DEF_EX[id] ? '<br><span class="muted">تمرين أصلي: يمكن استرجاعه لاحقًا من «المحذوفات»، أما المشاركات فتُحذف نهائيًا.</span>' : '<br><b>تمرين مُضاف: لا رجعة في هذا الحذف.</b>'), { danger: true, ok: 'حذف التمرين' }))) break;
+      const upd = { ['posts/' + id]: null, ['visibility/' + id]: null, ['reveal/' + id]: null, ['content/ex/' + id]: null, ['presence/' + id]: null };
+      if (DEF_EX[id]) upd['removed/ex/' + id] = true; else upd['added/ex/' + id] = null;
+      if (Store.invite && Store.invite.ex === id) upd['invite'] = null;
+      await DB.update('', upd, { allowTopLevel: true }); UI.toast('🗑 حُذف التمرين'); break;
+    }
+    case 'restore-removed': { const k = t.getAttribute('data-kind'); await DB.remove('removed/' + k + '/' + id); UI.toast('↺ استُرجع ' + (k === 'axes' ? 'المحور' : 'التمرين')); break; }
+    case 'del-user': {
+      const uid = t.getAttribute('data-uid'); const u = (Store.users || {})[uid] || {};
+      if (!(await UI.confirm('حذف حساب «' + h(u.name || uid) + '» نهائيًا من المنصة مع كل بياناته: مشاركاته الفردية، وتقييماته، وحضوره، واهتماماته، ومتابعاته، وإعجاباته. إجابات المجموعات تبقى باسم المجموعة مع إزالة اسمه منها. <b>لا رجعة في هذا الحذف.</b>', { danger: true, ok: 'حذف المتدرب' }))) break;
+      const upd = purgeUserUpdates(uid);
+      Object.keys(Store.presence || {}).forEach(ex => { const pr = Store.presence[ex] || {}; Object.keys(pr).forEach(s => { if (pr[s] && pr[s].u === uid) upd['presence/' + ex + '/' + s] = null; }); });
+      await DB.update('', upd); DB.transaction('stats/registered', c => Math.max(0, (Number(c) || 0) - 1)); UI.toast('🗑 حُذف المتدرب وكل مشاركاته'); break;
+    }
     case 'clear-posts': { if (await UI.confirm('مسح كل مشاركات «' + h(Content.exTitle(id)) + '»؟', { danger: true, ok: 'مسح المشاركات' })) DB.remove('posts/' + id); break; }
     case 'reveal': { const cur = await DB.get('reveal/' + id); await DB.set('reveal/' + id, cur ? null : true); UI.toast(cur ? '🔒 أُخفيت الإجابات' : '🔓 كُشفت الإجابات الصحيحة لكل المتدربين'); break; } // قراءة الحالة الفعلية من القاعدة قبل التبديل
     case 'global-reset': globalReset(); break;
@@ -629,7 +672,7 @@ function authInit() {
     if (SafeSS.get('ec_admin_redirect')) { SafeSS.del('ec_admin_redirect'); if (!ok && u && !u.isAnonymous) { UI.alert('الحساب ' + h(u.email || '') + ' غير مضاف إلى حسابات المدربين. أضف هذا الرقم في العقدة admins بقيمة true:<br><b class="num" dir="ltr" style="user-select:all">' + h(u.uid) + '</b>'); firebase.auth().signOut(); return; } }
     syncWatchers(); await ensureOwnership();
     if (ok) setTimeout(migrateSchema, 1500);
-    if (ok && SafeSS.get('ec_go_admin')) { SafeSS.del('ec_go_admin'); Router.go('admin'); return; }
+    if (ok && SafeSS.get('ec_go_admin')) { SafeSS.del('ec_go_admin'); Router.go('home'); return; }
     App.render();
   });
 }
@@ -638,7 +681,7 @@ function genCode() { const a = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; let s = ''; co
 // ربط الجهاز بالسجل: السجل الجديد يُربط فورًا، والدخول من جهاز آخر يحتاج رمز الدخول الشخصي
 async function linkDevice(uid, code) { const au = authUid(); if (!DB.real || !au) return true; try { await DB.set('devices/' + uid + '/' + au, code || 'legacy', { quiet: true, beforeReady: true }); return true; } catch (e) { return false; } }
 async function ensureOwnership() {
-  if (!DB.real || !Me.data || !authUid() || !AUTH.enabled) return;
+  if (!DB.real || !Me.data || Me.isAdmin() || !authUid() || !AUTH.enabled) return;
   const uid = Me.data.uid; if (uid === authUid()) return;
   try { if (await DB.get('devices/' + uid + '/' + authUid())) return; } catch (e) {}
   if (await linkDevice(uid, Me.data.code)) {
@@ -683,7 +726,7 @@ function adminLogin() {
   const finish = async user => {
     const ok = (await DB.get('admins/' + user.uid)) === true;
     if (!ok) { await firebase.auth().signOut(); err('الحساب ' + h(user.email || '') + ' غير مضاف إلى حسابات المدربين (العقدة admins في قاعدة البيانات).<br>انسخ هذا الرقم وأضفه هناك بقيمة true:<br><span class="num" dir="ltr" style="user-select:all;font-weight:700">' + h(user.uid) + '</span>'); return false; }
-    AUTH.user = user; AUTH.isAdmin = true; m.close(); SafeSS.del('ec_preview'); syncWatchers(); setTimeout(migrateSchema, 1500); Router.go('admin'); return true;
+    AUTH.user = user; AUTH.isAdmin = true; m.close(); LoginModal.close(); Presence.leave(); syncWatchers(); setTimeout(migrateSchema, 1500); Router.go('home'); UI.toast('🛡️ أهلًا بك — زر «لوحة التحكم» أعلى الصفحة'); return true;
   };
   $('[data-google]', m.el).onclick = async () => {
     const btn = $('[data-google]', m.el); btn.disabled = true; err('');
@@ -722,6 +765,7 @@ function boot() {
   setTimeout(() => { if (!App.dataReady) { App.slow = true; App.render(); } }, 8000);
   DB.onStatus(debounce(() => { if (App.dataReady) App.render(); }, 120));
   DB.onReject = (e, where) => { console.warn('write rejected', where, e); UI.toast('⚠️ تعذّر حفظ التعديل: ' + ((e && e.code === 'PERMISSION_DENIED') || /permission/i.test(String(e && e.message)) ? 'رفضت قاعدة البيانات الكتابة' : String((e && e.message) || e)) + ' — تُعرض الآن آخر نسخة محفوظة على الخادم', 6000); App.onData(); };
+  let wasConn = DB.status.connected; DB.onStatus(st => { if (st.connected && !wasConn) Presence.resync(); wasConn = st.connected; });
   DB.onSynced = () => UI.toast('✅ عاد الاتصال وحُفظت كل التعديلات المعلّقة', 4000);
   window.addEventListener('beforeunload', e => { if (DB.status && DB.status.pending > 0) { e.preventDefault(); e.returnValue = ''; return ''; } });
   App.render();

@@ -31,12 +31,20 @@
 - البيانات الخاصة في `private/<uid>` لا يقرؤها إلا صاحبها والمدرب؛ رمز الحضور يُتحقق منه على الخادم؛ إجابات المجموعة والمختبر لا يكتبها إلا أعضاؤها؛ حدود أحجام للنصوص.
 - **مدة الدخول:** 72 ساعة من آخر استخدام، ثم يُطلب دخول جديد.
 - منظِّف HTML آمن، ولا يظهر معرّف المتدرب في الروابط.
-- القواعد في `database.rules.json`. الاختبارات: `node tests/security-scenarios.js` و`auth-scenarios.js` و`session-scenarios.js` و`features-scenarios.js` و`xss-scenarios.js`.
+- القواعد في `database.rules.json`. الاختبارات: `node tests/security-scenarios.js` و`auth-scenarios.js` و`session-scenarios.js` و`features-scenarios.js` و`xss-scenarios.js` و`admin-live-scenarios.js` و`sims-scenarios.js`.
+
+## المدرب داخل المنصة
+- **الدخول:** أيقونة قفل صغيرة أسفل صفحة الدخول ← حساب Google. بعد الدخول تظهر الواجهة التعليمية أولًا، وزر **«لوحة التحكم»** أعلى الصفحة للمدرب وحده.
+- **المشاركة باسم «الإدارة»:** كل التمارين متاحة للمدرب لاختبارها؛ تُحفظ مشاركته بالمفتاح `admin` وباسم «الإدارة»، ولا ينضم لأي مجموعة ولا يمس إجاباتها.
+- **الحضور الحي:** `presence/<التمرين>/<جلسة>` يكتبه كل متصفح على صفحة التمرين ويُحذف تلقائيًا عند المغادرة أو الإغلاق أو انقطاع الاتصال. يقرؤه المدرب وحده (العدد الحالي فقط، دون أي سجل تراكمي).
+- **الدعوة:** `invite` عقدة واحدة يكتبها المدرب؛ الدعوة الجديدة تحل محل السابقة. تظهر للمتدربين المسجلين فقط.
+- **الحذف:** حذف متدرب من قائمة المسجلين يحذف حسابه وكل مشاركاته. حذف محور أو تمرين أصلي يُسجَّل في `removed` ويمكن استرجاعه من «المحذوفات» (المشاركات تُحذف نهائيًا)، أما المُضاف فيُحذف نهائيًا.
+- **مهم:** هذه الميزات تحتاج نشر `database.rules.json` المحدّث (العقد `presence` و`invite` و`removed`). قبل النشر تعمل المنصة كالمعتاد، لكن العداد والدعوة وحذف المحتوى الأصلي لن تُحفظ.
 
 ## خطوات التفعيل في Firebase (مرة واحدة)
 1. Firebase Console ← المشروع ← ⚙️ Project settings ← Your apps ← أضف تطبيق ويب (`</>`)، وانسخ قيم `apiKey` و`authDomain` و`projectId` و`appId` إلى `firebaseConfig` في `src/js/00-core.js`، ثم `node src/build.js`.
 2. Authentication ← Sign-in method: فعّل **Anonymous** و**Google**. وفي Settings ← Authorized domains أضف نطاق الموقع المنشور.
-3. افتح الموقع واضغط ⚙️ ← الدخول بحساب Google؛ ستظهر رسالة فيها رقم UID. أضفه في Realtime Database ← Data: `admins/<UID> = true`.
+3. افتح الموقع، واضغط أيقونة القفل الصغيرة أسفل صفحة الدخول ← الدخول بحساب Google؛ ستظهر رسالة فيها رقم UID. أضفه في Realtime Database ← Data: `admins/<UID> = true`.
 4. انشر محتوى `database.rules.json` في Realtime Database ← Rules ← Publish.
 5. ادخل كمدرب مرة واحدة (ترحيل تلقائي إلى النموذج المحمي).
 6. اختياري: App Check (reCAPTCHA v3) عبر `appCheckSiteKey`، وحصر مفتاح API على نطاق الموقع من Google Cloud Console.

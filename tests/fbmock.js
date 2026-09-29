@@ -85,6 +85,7 @@
       update(o) { return queue('update', path, o); },
       remove() { return queue('set', path, null); },
       push() { return ref(path + '/p' + Math.random().toString(36).slice(2, 10)); },
+      onDisconnect() { return { remove() { M.onDisc = (M.onDisc || []).filter(x => x !== path).concat([path]); return Promise.resolve(); }, cancel() { M.onDisc = (M.onDisc || []).filter(x => x !== path); return Promise.resolve(); } }; },
       transaction(fn) { return new Promise((res, rej) => { const run = () => { if (!(M.loaded && M.connected)) return setTimeout(run, 50); const cur = getAt(view(), path); const nv = fn(clone(cur)); if (nv === undefined) return res({ committed: false, snapshot: snap(cur, path) }); queue('set', path, nv).then(() => res({ committed: true, snapshot: snap(nv, path) }), rej); }; run(); }); }
     };
   }
