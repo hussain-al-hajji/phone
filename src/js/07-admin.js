@@ -49,12 +49,18 @@ function exRow(e, o = {}) {
     '<button class="btn btn-ghost btn-xs" data-act="toggle-vis" data-id="' + h(e.id) + '">' + (e._hidden ? '👁 إظهار' : '🙈 إخفاء') + '</button>' +
     (o.kind !== 'survey' ? '<button class="btn btn-ghost btn-xs" data-act="copy-ex" data-id="' + h(e.id) + '">🧬 نسخ</button>' : '') +
     (isDef && e._modified ? '<button class="btn btn-ghost btn-xs" data-act="reset-ex" data-id="' + h(e.id) + '">↺ استرجاع الافتراضي</button>' : '') + (o.kind !== 'survey' ? '<button class="btn btn-danger btn-xs" data-act="delete-ex" data-id="' + h(e.id) + '">🗑 حذف التمرين</button>' : '') +
-    '<button class="btn btn-danger btn-xs" data-act="clear-posts" data-id="' + h(e.id) + '">🧹 مسح المشاركات</button>' +
+    (o.kind !== 'survey' ? '<button class="btn btn-danger btn-xs" data-act="clear-posts" data-id="' + h(e.id) + '">🧹 مسح المشاركات</button>' : '') + // تقييمات الختام لها زر مسح مستقل في قسم «ختام البرنامج»
     '</div>' + exSummary(e) + '</div>';
 }
 
 Views.admin = {
   // المحاور والتمارين الأصلية المحذوفة: تبقى قابلة للاسترجاع (المشاركات حُذفت نهائيًا عند الحذف)
+  // مسح تقييمات ختام البرنامج: زر مستقل تمامًا، ولا تمسّها «إعادة الضبط الشاملة»
+  surveyClear(sv) {
+    const n = Object.keys((Store.posts || {})[sv.id] || {}).filter(k => (Store.posts[sv.id] || {})[k]).length;
+    return '<div class="survey-clear"><div><b>🗑 مسح تقييمات ختام البرنامج</b><div class="muted" style="font-size:12.5px">التقييمات المسجَّلة الآن: <b class="num">' + n + '</b>. هذا الزر مستقل عن «إعادة الضبط الشاملة» التي لا تمسّ هذه التقييمات أبدًا.</div></div>' +
+      '<button class="btn btn-danger btn-sm" data-act="survey-clear" ' + (n ? '' : 'disabled') + '>🗑 مسح التقييمات (<span class="num">' + n + '</span>)</button></div>';
+  },
   removedBtn() { const r = Store.removed || {}; const n = Object.keys(r.axes || {}).length + Object.keys(r.ex || {}).length; return n ? '<button class="btn btn-ghost btn-sm" data-act="drop" data-k="removed">🗑 المحذوفات (<span class="num">' + n + '</span>)</button>' : ''; },
   removedList() {
     const r = Store.removed || {}; const row = (kind, id, title) => '<div class="person"><span class="nm">' + h(title) + '</span><span class="muted">' + (kind === 'axes' ? 'محور' : 'تمرين') + '</span><button class="btn btn-soft btn-xs" data-act="restore-removed" data-kind="' + kind + '" data-id="' + h(id) + '">↺ استرجاع</button></div>';
@@ -173,12 +179,12 @@ Views.admin = {
     out += '<div class="acc ' + (openAct ? 'open' : '') + '" style="--ac:#3B4677;--acg:' + tint('#3B4677', .08) + '"><div class="acc-head" data-act="acc" data-k="acts"><span class="aico">⚡</span><h3>قسم «أنشطة» <span class="muted num" style="font-size:12.5px">(' + Content.activities({ all: true }).length + ')</span></h3><span class="arrow">◀</span></div><div class="acc-body">' + (openAct ? Content.activities({ all: true }).map(e => exRow(e, { kind: 'activity' })).join('') : '') + '</div></div>';
     const sv = Content.survey({ all: true }); const openSv = UIState.openAcc.has('survey');
     B('survey');
-    out += '<div class="acc ' + (openSv ? 'open' : '') + '" style="--ac:#F58220;--acg:' + tint('#F58220', .08) + '"><div class="acc-head" data-act="acc" data-k="survey"><span class="aico">🎓</span><h3>ختام البرنامج — ' + h(sv.title) + ' ' + tags(sv) + '</h3><span class="arrow">◀</span></div><div class="acc-body">' + (openSv ? exRow(sv, { kind: 'survey' }) : '') + '</div></div>';
+    out += '<div class="acc ' + (openSv ? 'open' : '') + '" style="--ac:#F58220;--acg:' + tint('#F58220', .08) + '"><div class="acc-head" data-act="acc" data-k="survey"><span class="aico">🎓</span><h3>ختام البرنامج — ' + h(sv.title) + ' ' + tags(sv) + '</h3><span class="arrow">◀</span></div><div class="acc-body">' + (openSv ? Views.admin.surveyClear(sv) + exRow(sv, { kind: 'survey' }) : '') + '</div></div>';
     const L = Content.lab(); const openLab = UIState.openAcc.has('labAcc');
     B('lab');
     out += '<div class="acc ' + (openLab ? 'open' : '') + '" style="--ac:#0F6E8C;--acg:' + tint('#0F6E8C', .08) + '"><div class="acc-head" data-act="acc" data-k="labAcc"><span class="aico">🧪</span><h3>المختبر الختامي — ' + h(L.title) + ' ' + (L._modified ? '<span class="tag mod">معدَّل</span> ' : '') + (Content.isHidden('home_lab') ? '<span class="tag hid">مخفي من الرئيسية</span>' : '') + '</h3><span class="arrow">◀</span></div><div class="acc-body">' + (openLab ? '<div class="ex-row"><div class="top"><span class="nm"><span class="num">' + L.stages.length + '</span> مراحل × <span class="num">' + L.minutes + '</span> دقائق · <span class="num">' + Object.keys(Store.labAnswers || {}).length + '</span> مجموعة شاركت</span><button class="btn btn-soft btn-xs" data-go="labEdit">✏️ تعديل المختبر ومراحله</button>' + (L._modified ? '<button class="btn btn-ghost btn-xs" data-act="lab-reset-content">↺ استرجاع الافتراضي</button>' : '') + '<button class="btn btn-danger btn-xs" data-act="lab-clear">🧹 مسح إجابات ومؤقتات المختبر</button></div></div>' : '') + '</div></div>';
     B('reset');
-    out += '<div class="tool danger-tool" style="min-height:0"><div class="th"><span class="ti" style="background:#FDECEC;color:#C62F35">⚠️</span><h4>إعادة ضبط شاملة — مسح جميع المدخلات من السيرفر</h4></div><div class="tb">يأخذ نسخة احتياطية تلقائيًا ثم يمسح كل مشاركات التمارين والأنشطة (عدا الاستطلاع الختامي)، ومؤقتات وإجابات المختبر، والتقييم القبلي والبعدي، وسجل الحضور، وقائمة المسجّلين والتعيينات، ويُلزم كل متصفح قديم بتسجيل اسم جديد. لا يمس المحتوى وتعديلاته.</div><div class="tf"><button class="btn btn-danger btn-sm" data-act="global-reset">مسح جميع المدخلات من السيرفر</button></div></div>';
+    out += '<div class="tool danger-tool" style="min-height:0"><div class="th"><span class="ti" style="background:#FDECEC;color:#C62F35">⚠️</span><h4>إعادة ضبط شاملة — مسح جميع المدخلات من السيرفر</h4></div><div class="tb">يأخذ نسخة احتياطية تلقائيًا ثم يمسح كل مشاركات التمارين والأنشطة (<b>ولا يمسّ تقييمات ختام البرنامج</b>؛ لها زر مسح مستقل في قسم «ختام البرنامج»)، ومؤقتات وإجابات المختبر، والتقييم القبلي والبعدي، وسجل الحضور، وقائمة المسجّلين والتعيينات، ويُلزم كل متصفح قديم بتسجيل اسم جديد. لا يمس المحتوى وتعديلاته.</div><div class="tf"><button class="btn btn-danger btn-sm" data-act="global-reset">مسح جميع المدخلات من السيرفر</button></div></div>';
     B(null);
     return Views.admin.shell(blocks);
   },

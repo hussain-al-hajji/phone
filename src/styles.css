@@ -1519,3 +1519,5 @@ html[data-theme="dark"] .reveal-note{color:#8DF0BE;background:#0F2A20}
 .sim-trap{padding:8px 12px;border-radius:12px;background:var(--bad-bg);font-family:var(--f-ui);font-size:13.5px;color:#7A2226}
 html[data-theme="dark"] .sim-why{background:#2B2616;border-color:#6B5520}
 html[data-theme="dark"] .sim-trap{background:#3D1B21;color:#FFB3B7}
+.survey-clear{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:12px 14px;border-radius:14px;border:1px dashed #E2A3A6;background:var(--bad-bg);font-family:var(--f-ui);margin-bottom:10px}
+html[data-theme="dark"] .survey-clear{border-color:#6B2A32}

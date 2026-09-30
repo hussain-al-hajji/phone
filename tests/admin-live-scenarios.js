@@ -163,6 +163,18 @@ async function register(p, name) { await p.fill('#reg_name', name); await p.fill
   await D.p.click('[data-act="del-user"][data-uid="' + uidA + '"]'); await D.p.waitForTimeout(200); await okModal(D.p); await D.p.waitForTimeout(700);
   t = await server(D.p); check('userDeleted', !at(t, 'users/' + uidA) && !at(t, 'posts/a1e1/' + uidA) && !at(t, 'devices/' + uidA) && !at(t, 'secrets/' + uidA) && at(t, 'posts/a1e1/admin/name') === 'الإدارة');
   await A.p.waitForTimeout(2500); check('deletedTraineeSignedOut', await A.p.evaluate(() => !Me.data));
+  // 10b) «مسح كل شيء» لا يمسّ تقييمات ختام البرنامج، ولها زر مسح مستقل
+  await D.p.evaluate(async () => { await DB.set('posts/survey/uSeed1', { ratings: { 0: 5 }, nps: 9, name: 'متدرب', uid: 'uSeed1', ts: DB.now() }); await DB.set('posts/a1e1/uSeed1', { text: 'x', name: 'متدرب', uid: 'uSeed1', ts: DB.now() }); }); await D.p.waitForTimeout(400);
+  check('surveySeeded', !!at(await server(D.p), 'posts/survey/uSeed1'));
+  await D.p.evaluate(() => { globalReset(); }); await D.p.waitForSelector('.modal [data-ok]'); await D.p.click('.modal [data-ok]'); await D.p.waitForTimeout(500);
+  for (let i = 0; i < 4; i++) { const ok = await D.p.$('.modal-back [data-ok]'); if (!ok) break; await ok.click(); await D.p.waitForTimeout(500); }
+  await D.p.waitForTimeout(900); t = await server(D.p);
+  check('resetKeepsSurvey', !!at(t, 'posts/survey/uSeed1') && !at(t, 'posts/a1e1/uSeed1'));
+  await D.p.evaluate(() => { UIState.openAcc.add('survey'); Router.go('admin'); UIState.adminGrp = 'g_acts'; App.render(); }); await D.p.waitForTimeout(400);
+  check('surveyClearBtn', !!(await D.p.$('[data-act="survey-clear"]')) && !!(await D.p.$('.survey-clear')));
+  await D.p.click('[data-act="survey-clear"]'); await D.p.waitForSelector('.modal [data-ok]'); await D.p.click('.modal [data-ok]'); await D.p.waitForTimeout(500);
+  for (let i = 0; i < 3; i++) { const ok = await D.p.$('.modal-back [data-ok]'); if (!ok) break; await ok.click(); await D.p.waitForTimeout(400); }
+  await D.p.waitForTimeout(700); check('surveyClearedSeparately', !Object.keys(at(await server(D.p), 'posts/survey') || {}).length);
   // 11) خروج المدرب
   await D.p.click('.top-actions [data-act="admin-exit"]'); await D.p.waitForTimeout(200); await okModal(D.p); await D.p.waitForTimeout(700);
   check('adminLoggedOut', await D.p.evaluate(() => !Admin.ok()) && !!(await D.p.$('.login-page')));

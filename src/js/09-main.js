@@ -269,7 +269,7 @@ async function exportAll() {
 // الحضور الحي والدعوة: كتابات منفصلة هادئة حتى لا تُفشل قواعدٌ قديمة عملية المسح نفسها
 function clearLive() { DB.remove('presence', { quiet: true }).catch(() => {}); DB.remove('invite', { quiet: true }).catch(() => {}); }
 async function globalReset() {
-  const ok = await UI.confirm('<b>تحذير:</b> سيُمسح نهائيًا كل ما أدخله المتدربون (المشاركات، المختبر، المؤقتات، التقييم القبلي والبعدي، الحضور، قائمة المسجّلين، التعيينات)، ما عدا الاستطلاع الختامي، وسيُطلب من كل متصفح تسجيل اسم جديد. لا يمكن التراجع.', { danger: true, ok: 'نعم، امسح كل المدخلات', title: 'إعادة ضبط شاملة' });
+  const ok = await UI.confirm('<b>تحذير:</b> سيُمسح نهائيًا كل ما أدخله المتدربون (المشاركات، المختبر، المؤقتات، التقييم القبلي والبعدي، الحضور، قائمة المسجّلين، التعيينات)، <b>ولا يمسّ تقييمات ختام البرنامج</b> (لها زر مسح مستقل في لوحة التحكم)، وسيُطلب من كل متصفح تسجيل اسم جديد. لا يمكن التراجع.', { danger: true, ok: 'نعم، امسح كل المدخلات', title: 'إعادة ضبط شاملة' });
   if (!ok) return;
   const posts = await DB.get('posts') || {}; const upd = {};
   Object.keys(posts).forEach(k => { if (k !== SURVEY_ID) upd['posts/' + k] = null; }); // استثناء صريح للاستطلاع الختامي
@@ -593,6 +593,12 @@ document.addEventListener('click', async ev => {
       const upd = purgeUserUpdates(uid);
       Object.keys(Store.presence || {}).forEach(ex => { const pr = Store.presence[ex] || {}; Object.keys(pr).forEach(s => { if (pr[s] && pr[s].u === uid) upd['presence/' + ex + '/' + s] = null; }); });
       await DB.update('', upd); DB.transaction('stats/registered', c => Math.max(0, (Number(c) || 0) - 1)); UI.toast('🗑 حُذف المتدرب وكل مشاركاته'); break;
+    }
+    case 'survey-clear': {
+      const sv = Content.survey({ all: true }); if (!sv) break; const n = Object.keys((Store.posts || {})[sv.id] || {}).length; if (!n) { UI.toast('لا توجد تقييمات لمسحها'); break; }
+      if (!(await UI.confirm('مسح <b><span class="num">' + n + '</span></b> تقييم من «' + h(sv.title) + '» نهائيًا؟ يُؤخذ قبلها نسخة احتياطية تلقائية، ولا تتأثر أي بيانات أخرى (المسجّلون والمشاركات وغيرها). <b>لا رجعة في هذا المسح.</b>', { danger: true, ok: 'مسح التقييمات', title: 'مسح تقييمات ختام البرنامج' }))) break;
+      if (!(await autoBackup(true)) && !(await UI.confirm('تعذر حفظ النسخة الاحتياطية التلقائية قبل المسح. المتابعة تعني مسح التقييمات دون نسخة.', { danger: true, ok: 'امسح دون نسخة', title: 'النسخة الاحتياطية' }))) break;
+      await DB.remove('posts/' + sv.id); UI.toast('🗑 مُسحت تقييمات ختام البرنامج'); break;
     }
     case 'clear-posts': { if (await UI.confirm('مسح كل مشاركات «' + h(Content.exTitle(id)) + '»؟', { danger: true, ok: 'مسح المشاركات' })) DB.remove('posts/' + id); break; }
     case 'reveal': { const cur = await DB.get('reveal/' + id); await DB.set('reveal/' + id, cur ? null : true); UI.toast(cur ? '🔒 أُخفيت الإجابات' : '🔓 كُشفت الإجابات الصحيحة لكل المتدربين'); break; } // قراءة الحالة الفعلية من القاعدة قبل التبديل
