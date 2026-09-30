@@ -1509,3 +1509,5 @@ html[data-theme="dark"] .sim-best{background:#0F2A20}
 .hs-empty,.hs-more{font-family:var(--f-ui);font-size:13.5px;color:var(--ink-3);padding:12px}
 .hs-more{padding:6px 10px;font-size:12.5px}
 @media (max-width:600px){.hs-tag{display:none}}
+.reveal-note{margin-top:8px;padding:8px 12px;border-radius:12px;background:var(--ok-bg);border:1px solid var(--ok);font-family:var(--f-ui);font-size:13.5px;color:#10573A}
+html[data-theme="dark"] .reveal-note{color:#8DF0BE;background:#0F2A20}

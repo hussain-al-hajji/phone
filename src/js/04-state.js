@@ -5,7 +5,7 @@
 const Store = {
   removed: { axes: {}, ex: {} }, presence: {}, invite: null,
   contentAxes: {}, contentEx: {}, addedAxes: {}, addedEx: {}, visibility: {}, enabled: {}, order: [],
-  site: {}, groupCount: DEFAULT_GROUPS, groupNames: {}, assign: {}, users: {}, posts: {}, reveal: {},
+  site: {}, groupsOn: true, groupCount: DEFAULT_GROUPS, groupNames: {}, assign: {}, users: {}, posts: {}, reveal: {},
   labTimers: {}, labAnswers: {}, broadcast: null, resetStamp: 0, registered: 0, ready: false,
   contentLab: null, contentAssess: null, contentStories: {}, addedStories: {}, storyOrder: [], storyLikes: {}, exOrder: {}, assess: {}, assessCfg: {}, attendance: {}, attCfg: {}
 };
@@ -125,6 +125,9 @@ const Content = {
     else e = Object.assign({ format: 'text', mode: 'individual', steps: [] }, added, { id, _added: true, _modified: false });
     e.steps = arr(e.steps); e.rates = arr(e.rates); e.items = arr(e.items).map(it => Object.assign({}, it, it.options ? { options: arr(it.options) } : {}));
     if (FORMAT_MODE[e.format]) e.mode = FORMAT_MODE[e.format];
+    e._rawMode = e.mode; // النوع المحفوظ فعلًا (يستعمله نموذج التعديل حتى لا يُحفظ «فردي» بالخطأ أثناء تعطيل المجموعات)
+    // تعطيل وضع المجموعات: تصير تمارين المجموعات فردية (لا اختيار مجموعة، والتصنيف «فردي»)
+    if (e.mode === 'group' && !Groups.enabled()) { e.mode = 'individual'; e._groupsOff = true; e.steps = e.steps.filter(s => !/مجموع/.test(s)); }
     e._hidden = Content.isHidden(id);
     return e;
   },
@@ -249,6 +252,7 @@ const DEFAULT_PRIVACY = {
 
 // ---------- المجموعات ----------
 const Groups = {
+  enabled() { return Store.groupsOn !== false; }, // وضع المجموعات العام (الأصل مفعّل)
   count() { const n = parseInt(Store.groupCount, 10); return isFinite(n) && n >= 2 ? Math.min(30, n) : DEFAULT_GROUPS; },
   list() { const out = []; for (let i = 1; i <= Groups.count(); i++) out.push(i); return out; },
   label(n) { if (!(+n > 0)) return 'الإدارة'; // مفتاح مشاركة الإدارة (admin) في التمارين الجماعية
@@ -317,7 +321,7 @@ const Me = {
 const Progress = {
   exDone(e, uid) {
     const ps = Store.posts[e.id]; if (!ps || !uid) return false;
-    if (e.mode === 'group') return Object.keys(ps).some(k => ps[k] && ps[k].members && ps[k].members[uid]);
+    if (e.mode === 'group' || e._groupsOff) { if (e._groupsOff && ps[uid]) return true; return Object.keys(ps).some(k => ps[k] && ps[k].members && ps[k].members[uid]); }
     if (e.format === 'mcq') { const a = ansList(ps[uid] && ps[uid].answers, e.items.length); return !!ps[uid] && a.every(v => v !== null && v !== ''); }
     return !!ps[uid];
   },

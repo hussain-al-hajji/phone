@@ -104,6 +104,30 @@ async function register(p, name) { await p.fill('#reg_name', name); await p.fill
   await D.p.click('.ex-live [data-act="reveal"]'); await D.p.waitForTimeout(700);
   check('bestShownAfter', !!(await D.p.$('.sim-best .gauge')) && /88/.test(await D.p.$eval('.sim-best', e => e.innerText)));
   await D.p.click('.ex-live [data-act="reveal"]'); await D.p.waitForTimeout(400);
+  // 7c) الإجابة الصحيحة تظهر مع كل فقرة (لكل المتدربين، أجابوا أم لم يجيبوا) بعد كشف المدرب
+  const notes = async (p, id) => { await vis(p, id); return p.$$eval('.reveal-note', e => e.length); };
+  const itemsN = id => A.p.evaluate(id => Content.ex(id).items.length, id);
+  for (const id of ['a1e3', 'a1e6', 'a1e2', 'a2e2']) {
+    const n = await itemsN(id); const before = await notes(A.p, id); await D.p.evaluate(id => Router.go('ex', { id }), id); await D.p.waitForTimeout(300); await D.p.click('.ex-live [data-act="reveal"]'); await D.p.waitForTimeout(800);
+    const after = await A.p.evaluate(() => document.querySelectorAll('.reveal-note').length); check('revealNotes_' + id, before === 0 && after === n && n >= 10);
+    await D.p.click('.ex-live [data-act="reveal"]'); await D.p.waitForTimeout(500);
+  }
+  // 7d) تعطيل وضع المجموعات: تمارين المجموعات تصير فردية بلا اشتراط اختيار مجموعة
+  await vis(A.p, 'a1e2'); check('groupPickerBefore', !!(await A.p.$('.group-btn')));
+  await D.p.click('[data-go="admin"]'); await D.p.waitForTimeout(400);
+  await D.p.evaluate(() => { for (const g of ['g_users', 'g_content', 'g_home']) { UIState.adminGrp = g; App.render(); if (document.querySelector('[data-act="groups-toggle"]')) break; } });
+  check('groupsSwitchOn', await D.p.$eval('[data-act="groups-toggle"]', e => e.classList.contains('on')));
+  await D.p.click('[data-act="groups-toggle"]'); await D.p.waitForTimeout(250); await okModal(D.p); await D.p.waitForTimeout(700);
+  t = await server(D.p); check('groupsDisabledSaved', at(t, 'settings/groups/enabled') === false);
+  await vis(A.p, 'a1e2');
+  R.pillOff = await A.p.$eval('.ex-head .pill', e => e.innerText); check('modeIndividualLabel', /فردي/.test(R.pillOff) && !/جماعي/.test(R.pillOff));
+  check('noGroupPickerWhenOff', !(await A.p.$('.group-btn')) && !(await A.p.$('.locked-note')));
+  await A.p.evaluate(() => { const e = Content.ex('a1e2'); UIState.draft['a1e2'] = e.items.map(i => i.answer); }); await A.p.evaluate(() => App.render()); await A.p.click('[data-act="save-inter"]'); await A.p.waitForTimeout(700);
+  t = await server(A.p); check('individualPostSaved', !!at(t, 'posts/a1e2/' + uidA + '/answers') && !Object.keys(at(t, 'posts/a1e2') || {}).some(k => /^g\d/.test(k)));
+  check('doneCountsWhenOff', await A.p.evaluate((u) => Progress.exDone(Content.ex('a1e2'), u), uidA));
+  await D.p.click('[data-act="groups-toggle"]'); await D.p.waitForTimeout(700);
+  check('groupsReEnabled', at(await server(D.p), 'settings/groups/enabled') === true);
+  await vis(A.p, 'a2e2'); check('groupPickerBack', !!(await A.p.$('.group-btn')));
   // 8) لوحة التحكم: لا «معاينة كمتدرب»، وزر «عرض المنصة»، وعداد + دعوة في صف التمرين
   await D.p.click('[data-go="admin"]'); await D.p.waitForTimeout(500);
   check('noPreviewTool', !(await D.p.$('[data-tool="preview"]')) && !(await D.p.$('[data-act="preview"]')));

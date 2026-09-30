@@ -381,9 +381,12 @@ function mcqPollHtml(e) {
           (showPct ? '<span class="poll-bar" style="width:' + pct + '%"></span>' : '') +
           '<span class="mk">' + (sel ? '✓' : '') + '</span><span class="grow"><b>' + LETTERS[k] + ')</b> ' + h(o) + '</span>' +
           (showPct ? '<span class="poll-pct num">' + pct + '%</span>' : '') + '</button>';
-      }).join('') + '</div>' + (showPct ? '<div class="poll-total">👥 <span class="num">' + st[i].total + '</span> ' + (st[i].total === 1 ? 'مشاركة' : 'مشاركات') + (reveal ? ' · 🔓 الإجابة الصحيحة: ' + LETTERS[it.answer] + ')' : '') + '</div>' : '') + '</div>';
+      }).join('') + '</div>' + (showPct ? '<div class="poll-total">👥 <span class="num">' + st[i].total + '</span> ' + (st[i].total === 1 ? 'مشاركة' : 'مشاركات') + '</div>' : '') + (reveal ? revealNote('<b>' + LETTERS[it.answer] + ')</b> ' + h(it.options[it.answer])) : '') + '</div>';
   }).join('');
 }
+
+// سطر «الإجابة الصحيحة» داخل بطاقة السؤال نفسه (يظهر لكل المتدربين بعد أن يكشف المدرب الإجابات، أجاب المتدرب أم لم يجب)
+function revealNote(txt) { return '<div class="reveal-note">✅ <b>الإجابة الصحيحة:</b> ' + txt + '</div>'; }
 
 // ---- مكوّن الإجابة التفاعلية ----
 function interactiveHtml(e, post, canAct, editing) {
@@ -400,22 +403,22 @@ function interactiveHtml(e, post, canAct, editing) {
         opts.map(([v, label], k) => {
           const sel = show[i] !== null && show[i] !== undefined && String(show[i]) === String(v);
           let cls = sel ? 'sel' : '';
-          if (reveal && !active && post) { const correct = e.format === 'mcq' ? k === +it.answer : v === !!it.answer; if (correct) cls = 'right'; else if (sel) cls = 'wrong'; }
+          if (reveal) { const correct = e.format === 'mcq' ? k === +it.answer : v === !!it.answer; if (correct) cls = 'right'; else if (sel) cls = 'wrong'; }
           return '<button class="opt ' + cls + '" data-act="pick-opt" data-ex="' + h(e.id) + '" data-i="' + i + '" data-v="' + h(String(v)) + '" ' + (active ? '' : 'disabled') + '><span class="mk">' + (sel ? '✓' : '') + '</span><span>' + (e.format === 'mcq' ? '<b>' + LETTERS[k] + ')</b> ' : '') + h(label) + '</span></button>';
-        }).join('') + '</div></div>';
+        }).join('') + '</div>' + (reveal ? revealNote(e.format === 'mcq' ? '<b>' + LETTERS[it.answer] + ')</b> ' + h(it.options[it.answer]) : (it.answer ? 'صح' : 'خطأ')) : '') + '</div>';
     }).join('');
   } else if (e.format === 'fillblank') {
     const bank = bankOf(e); const used = {}; show.forEach(w => { if (w) used[w] = (used[w] || 0) + 1; }); const selW = UIState.fbSel[e.id];
     const usedCount = {};
     out += '<div class="bank">' + bank.map(w => { usedCount[w] = (usedCount[w] || 0) + 1; const isUsed = (used[w] || 0) >= usedCount[w]; return '<button class="chip ' + (isUsed ? 'used' : '') + (selW === w && !isUsed ? ' sel' : '') + '" data-act="fb-word" data-ex="' + h(e.id) + '" data-w="' + h(w) + '" ' + (active && !isUsed ? '' : 'disabled') + '>' + h(w) + '</button>'; }).join('') + '</div>';
     out += e.items.map((it, i) => {
-      const w = show[i]; let cls = w ? 'filled' : ''; if (reveal && !active && post && w) cls += w === it.answer ? ' right' : ' wrong';
+      const w = show[i]; let cls = w ? 'filled' : ''; if (reveal && w) cls += w === it.answer ? ' right' : ' wrong';
       const blank = '<button class="blank ' + cls + '" data-act="fb-blank" data-ex="' + h(e.id) + '" data-i="' + i + '" ' + (active ? '' : 'disabled') + '>' + (w ? h(w) : '&nbsp;…&nbsp;') + '</button>';
-      return '<div class="q-card"><div class="qt"><span class="qn num">' + (i + 1) + '</span><span>' + h(it.text).replace('___', blank) + '</span></div>' + (reveal && !active && post && w && w !== it.answer ? '<div class="correct-note">الصحيح: ' + h(it.answer) + '</div>' : '') + '</div>';
+      return '<div class="q-card"><div class="qt"><span class="qn num">' + (i + 1) + '</span><span>' + h(it.text).replace('___', blank) + '</span></div>' + (reveal ? revealNote('<b>' + h(it.answer) + '</b>') : '') + '</div>';
     }).join('');
   } else if (e.format === 'comparePairs') {
     out += e.items.map((it, i) => '<div class="q-card"><div class="qt"><span class="qn num">' + (i + 1) + '</span><span>أي العبارتين أدق؟</span></div><div class="cmp-row">' +
-      ['a', 'b'].map(k => { const sel = show[i] === k; let cls = sel ? 'sel' : ''; if (reveal && !active && post) { if (k === it.answer) cls = 'right'; else if (sel) cls = 'wrong'; } return '<button class="cmp-opt ' + cls + '" data-act="pick-cmp" data-ex="' + h(e.id) + '" data-i="' + i + '" data-v="' + k + '" ' + (active ? '' : 'disabled') + '><b>(' + (k === 'a' ? 'أ' : 'ب') + ')</b>' + h(it[k]) + '</button>'; }).join('') + '</div></div>').join('');
+      ['a', 'b'].map(k => { const sel = show[i] === k; let cls = sel ? 'sel' : ''; if (reveal) { if (k === it.answer) cls = 'right'; else if (sel) cls = 'wrong'; } return '<button class="cmp-opt ' + cls + '" data-act="pick-cmp" data-ex="' + h(e.id) + '" data-i="' + i + '" data-v="' + k + '" ' + (active ? '' : 'disabled') + '><b>(' + (k === 'a' ? 'أ' : 'ب') + ')</b>' + h(it[k]) + '</button>'; }).join('') + '</div>' + (reveal ? revealNote('<b>(' + (it.answer === 'a' ? 'أ' : 'ب') + ')</b> ' + h(it[it.answer])) : '') + '</div>').join('');
   }
   return out;
 }
@@ -481,7 +484,8 @@ Views.ex = {
     if (e.scenario || e.chart) out += '<div class="ex-block scenario"><div class="lbl">🎬 الموقف</div>' + richHtml(e.scenario) + (e.chart ? '<div style="margin-top:12px">' + Charts.render(e.chart, col) + '</div>' : '') + '</div>';
     if (a) out += '<div class="ex-block extract"><div class="lbl">🧭 قبل أن تبدأ: مستخلص المحور</div><div style="font-family:var(--f-ui);font-weight:700">' + h(a.title) + (a.classic ? ' — <span class="muted">' + h(a.classic) + '</span>' : '') + '</div>' + (a.highlights.length ? '<ul style="margin-top:6px">' + a.highlights.map(x => '<li>' + h(x) + '</li>').join('') + '</ul>' : '') + '</div>';
     if (e.principle) out += '<div class="ex-block principle"><div class="lbl">🔬 المبدأ العلمي باختصار</div>' + richHtml(e.principle) + '</div>';
-    const steps = e.steps && e.steps.length ? e.steps : (DEFAULT_STEPS[e.format] || DEFAULT_STEPS.text);
+    let steps = e.steps && e.steps.length ? e.steps : (DEFAULT_STEPS[e.format] || DEFAULT_STEPS.text);
+    if (e._groupsOff) steps = steps.filter(s => !/مجموع/.test(s)); // تُحذف الخطوات التي تتحدث عن المجموعات عند تعطيل وضع المجموعات
     out += '<div class="ex-block"><div class="lbl">🛠 كيف تنجز التمرين؟</div><ol class="steps-list">' + steps.map((s, i) => '<li><span class="n num">' + (i + 1) + '</span><span>' + h(s) + '</span></li>').join('') + '</ol></div>';
     if (e.mode === 'group') out += '<div id="groupZone">' + groupPickerHtml(e) + '</div>';
     if (e.format === 'text' || !e.hint) out += '<div class="ex-block task"><div class="lbl">📝 المطلوب منك</div>' + richHtml(e.task || 'اكتب إجابتك.') + '</div>';
