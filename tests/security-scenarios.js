@@ -27,7 +27,7 @@ async function visitor(o = {}) { // كل زائر في سياق مستقل = م�
     window.__FB_TEST_CONFIG = { apiKey: 'test-key', authDomain: 'test.firebaseapp.com', projectId: 'test' };
     window.__MOCKCFG = Object.assign({ data: server, rules, delayFirst: 150, authUsers: { 'trainer@qdb.test': { pass: 'Secret#123', uid: 'adm1' } } }, x || {});
   }, [RULES, o.server || master.tree || SEED, o.cfg]);
-  if (o.me) await p.addInitScript(me => { if (!sessionStorage.getItem('__seeded')) { localStorage.setItem('ec_me', JSON.stringify(me)); sessionStorage.setItem('__seeded', '1'); } }, o.me);
+  if (o.me) await p.addInitScript(me => { if (!sessionStorage.getItem('__seeded')) { localStorage.setItem('phone:ec_me', JSON.stringify(me)); sessionStorage.setItem('__seeded', '1'); } }, o.me);
   await p.goto(U + (o.hash || '')); await p.waitForTimeout(o.wait || 900);
   return { ctx, p, net, errs };
 }

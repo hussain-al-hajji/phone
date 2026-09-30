@@ -34,7 +34,7 @@ const SEED = {
     await ctx.route(/firebase-(database|auth|app-check)-compat\.js/, r => r.fulfill({ body: '', contentType: 'application/javascript' }));
     await ctx.route(/fonts\.|cdnjs|translate\.google|^http:\/\/x\/|\/x$/, r => r.abort());
     await p.addInitScript(([d, x]) => { window.__MOCKCFG = Object.assign({ data: d, delayFirst: 50 }, x); window.__FB_TEST_CONFIG = { apiKey: 'test-key', authDomain: 'test.firebaseapp.com', projectId: 'test' }; }, [SEED, o.cfg || {}]);
-    if (o.me) await p.addInitScript(me => { localStorage.setItem('ec_me', JSON.stringify(me)); localStorage.setItem('__mock_auth', JSON.stringify({ uid: me.uid, isAnonymous: true })); }, o.me);
+    if (o.me) await p.addInitScript(me => { localStorage.setItem('phone:ec_me', JSON.stringify(me)); localStorage.setItem('__mock_auth', JSON.stringify({ uid: me.uid, isAnonymous: true })); }, o.me);
     await p.goto(U + (o.hash || '')); await p.waitForTimeout(700);
     if (o.admin) { await p.click('[data-act="admin-enter"]'); await p.waitForTimeout(200); await p.click('[data-google]'); await p.waitForTimeout(900); await p.evaluate(() => Router.go('admin')); await p.waitForTimeout(200); }
     for (const v of views) { await p.evaluate(v => { if (typeof v === 'string') location.hash = v; }, v.hash || v); await p.waitForTimeout(350); if (v.run) { try { await p.evaluate(v.run); } catch (e) {} await p.waitForTimeout(350); } R.visited.push(label + ':' + (v.name || v.hash || v)); }

@@ -14,7 +14,7 @@ const SHOTS = process.env.SHOTS;
   await ctx.route(/fonts\.|cdnjs|translate\.google/, r => r.abort());
   const me = { uid: 'u1', name: 'سارة أحمد', member: 1001, ts: 1, code: 'ABCDEF' };
   await p.addInitScript(([r, me]) => { window.__MOCKCFG = { data: { users: { u1: { name: me.name, member: 1001, ts: 1 } }, devices: { u1: {} } }, rules: r, delayFirst: 50 }; window.__FB_TEST_CONFIG = { apiKey: 'k', authDomain: 't', projectId: 't' };
-    localStorage.setItem('ec_me', JSON.stringify(me)); localStorage.setItem('__mock_auth', JSON.stringify({ uid: me.uid, isAnonymous: true })); }, [RULES, me]);
+    localStorage.setItem('phone:ec_me', JSON.stringify(me)); localStorage.setItem('__mock_auth', JSON.stringify({ uid: me.uid, isAnonymous: true })); }, [RULES, me]);
   await p.goto(U); await p.waitForTimeout(900);
   const list = await p.evaluate(() => Content.allExercises().map(x => x.e).filter(e => e && e.format === 'sim').map(e => ({ id: e.id, sim: e.sim, mode: e.mode })));
   const R = [];

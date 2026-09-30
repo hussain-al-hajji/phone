@@ -167,7 +167,7 @@ const SECTION_TYPES = { text: 'نص منسّق', video: 'فيديو', image: 'ص
 // ---------- تقييم البرنامج بعد التدريب (نجوم + مؤشر صافي التوصية) ----------
 const SurveyStats = {
   of(posts, e) {
-    e = e || Content.survey({ all: true }); const rates = (e && e.rates) || []; const list = Object.keys(posts || {}).map(k => posts[k]).filter(Boolean);
+    e = e || Content.survey({ all: true }); const rates = (e && e.rates) || []; const list = Object.keys(posts || {}).filter(k => k !== 'admin').map(k => posts[k]).filter(Boolean); // تقييم المتدربين فقط
     const avgs = rates.map((_, i) => { const v = list.map(p => +((p.ratings || {})[i])).filter(x => x >= 1 && x <= 5); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; });
     const np = list.map(p => p.nps).filter(x => x !== undefined && x !== null && x !== '').map(Number);
     const prom = np.filter(x => x >= 9).length, det = np.filter(x => x <= 6).length;
@@ -275,7 +275,8 @@ const Me = {
   data: null, guest: false,
   load() {
     const tryParse = s => { try { const o = JSON.parse(s); return o && o.uid ? o : null; } catch (e) { return null; } };
-    let d = tryParse(SafeLS.get('ec_me')) || tryParse(SafeSS.get('ec_me')) || tryParse(Cookie.get('ec_me'));
+    let d = tryParse(SafeLS.get('ec_me')) || tryParse(SafeSS.get('ec_me'));
+    Cookie.del('ec_me'); // الهوية لم تعد تُحفظ في كوكي (كانت تُرسل مع كل طلب ويقرؤها أي موقع على النطاق نفسه)
     const hp = getHashParams();
     // لم يعد مُعرّف المتدرب يوضع في الرابط (كان يتسرب عند مشاركة الروابط)؛ الهوية من التخزين المحلي والجلسة فقط
     Me.data = d;
@@ -296,13 +297,13 @@ const Me = {
     if (d && d.admin) { Me.data = d; return; }
     if (Me.isAdmin()) { Me._stash = { data: d, guest: false }; return; }
     Me.data = d; Me.guest = false; const s = JSON.stringify(d);
-    SafeLS.set('ec_me', s); SafeSS.set('ec_me', s); Cookie.set('ec_me', s);
+    SafeLS.set('ec_me', s); SafeSS.set('ec_me', s);
     SafeLS.del('ec_guest'); SafeSS.del('ec_guest');
     Router.syncHash();
   },
   clear() {
     Me.data = null; Me.guest = false;
-    SafeLS.del('ec_me'); SafeSS.del('ec_me'); Cookie.del('ec_me'); SafeLS.del('ec_guest'); SafeSS.del('ec_guest');
+    SafeLS.del('ec_me'); SafeSS.del('ec_me'); SafeLS.del('ec_guest'); SafeSS.del('ec_guest');
     Router.syncHash();
   },
   setGuest() { Me.data = null; Me.guest = true; SafeLS.set('ec_guest', '1'); SafeSS.set('ec_guest', '1'); },

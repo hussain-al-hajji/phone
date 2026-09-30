@@ -8,8 +8,9 @@
 const PRESENCE_STALE = 6 * 3600000; // سجل أقدم من 6 ساعات يُعد متروكًا (احتياط إن لم يعمل الحذف التلقائي)
 const Presence = {
   cur: null, curSid: null, curSig: '',
+  tab: genId('t'), // لكل تبويب معرّف مستقل: إغلاق أحدهما لا يحذف تسجيل الآخر
   sid() {
-    const a = typeof authUid === 'function' ? authUid() : null; if (a) return a;
+    const a = typeof authUid === 'function' ? authUid() : null; if (a) return a + '-' + Presence.tab;
     let s = SafeSS.get('ec_psid'); if (!s) { s = genId('s'); SafeSS.set('ec_psid', s); } return s;
   },
   target() { return App.dataReady && Router.cur.view === 'ex' && !Admin.ok() && (Me.isReg() || Me.guest) && Content.ex(Router.cur.id) ? Router.cur.id : null; },
@@ -33,7 +34,8 @@ const Presence = {
   // تفسير رفض قاعدة البيانات: الغالب أن قواعد Firebase المنشورة لا تحوي العقد الجديدة (presence / invite / removed)
   rulesHint(err) { return /permission/i.test(String((err && (err.code || err.message)) || '')) ? 'رفضت قاعدة البيانات الكتابة لأن <b>قواعد الأمان المنشورة في Firebase قديمة</b> ولا تحتوي العقد الجديدة (<span class="num" dir="ltr">presence</span> و<span class="num" dir="ltr">invite</span> و<span class="num" dir="ltr">removed</span>).<br><br>الحل: افتح Firebase Console ← Realtime Database ← <b>Rules</b>، والصق محتوى ملف <span class="num" dir="ltr">database.rules.json</span> المحدّث من المستودع، ثم اضغط <b>Publish</b>.' : 'تعذّر الحفظ: ' + h((err && err.message) || err); },
   denied() { return !!(Watch.denied && Watch.denied['presence']); },
-  list(ex) { const pr = (Store.presence || {})[ex] || {}; const now = DB.now(); return Object.keys(pr).map(k => pr[k]).filter(p => p && typeof p === 'object' && now - (+p.ts || 0) < PRESENCE_STALE); },
+  // شخص واحد بعدة تبويبات يُحسب مرة واحدة (بمعرّف جلسته قبل «-»)
+  list(ex) { const pr = (Store.presence || {})[ex] || {}; const now = DB.now(); const seen = {}; Object.keys(pr).forEach(k => { const p = pr[k]; if (!p || typeof p !== 'object' || now - (+p.ts || 0) >= PRESENCE_STALE) return; const id = k.split('-')[0]; if (!seen[id] || (+p.ts || 0) > (+seen[id].ts || 0)) seen[id] = p; }); return Object.keys(seen).map(id => seen[id]); },
   counts(ex) { const l = Presence.list(ex); const names = []; const seen = {}; let guests = 0; l.forEach(p => { if (p.g || !p.u) guests++; else if (!seen[p.u]) { seen[p.u] = 1; names.push(p.n || 'متدرب'); } }); return { total: names.length + guests, names, guests }; },
   chip(ex) {
     if (!Admin.ok()) return ''; const c = Presence.counts(ex);
