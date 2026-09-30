@@ -286,6 +286,7 @@ document.addEventListener('click', async ev => {
     case 'logout': { const ok = await UI.confirm('تسجيل الخروج من هذا الجهاز؟ لن يُحذف شيء من بياناتك أو مشاركاتك. للعودة لاحقًا استخدم رقم العضوية ورمز الدخول الشخصي من صفحة «حسابي».', { ok: 'تسجيل الخروج' }); if (ok) { Presence.leave(); Me.clear(); UIState.draft = {}; UIState.editing = {}; syncWatchers(); Router.go('home'); window.scrollTo(0, 0); } break; }
     case 'guest-login': Presence.leave(); Me.clear(); syncWatchers(); Router.go('home'); window.scrollTo(0, 0); break;
     case 'open-login': LoginModal.open(); break;
+    case 'hs-clear': { const i = document.getElementById('homeSearch'); if (i) { i.value = ''; i.focus(); } HomeSearch.update(''); break; }
     case 'presence-show': Presence.show(exId); break;
     case 'presence-rules': UI.alert(Presence.rulesHint({ code: 'permission' }), 'نشر قواعد Firebase'); break;
     case 'invite-send': Invite.send(id); break;
