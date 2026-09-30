@@ -173,10 +173,19 @@ const Sims = {
   },
   // الحل النموذجي: يظهر للجميع بعد أن يكشف المدرب الإجابات (محاكيات الإعدادات؛ أما التصنيف فتصحيحه داخل النموذج نفسه)
   bestHtml(e, S, rev) {
-    if (!rev || !S.best) return '';
-    const st = Object.assign(S.def(), JSON.parse(JSON.stringify(S.best))); const mine = Sims.state(e);
-    return '<div class="sim-best"><div class="sim-best-h">✅ الحل النموذجي <span class="muted">— كشفه المدرب</span></div><div class="sim-grid"><div class="sim-form sim-ro">' + S.form(st, e.id + '-best', 'disabled') + '</div><div>' + S.live(st) + '</div></div>' +
-      '<div class="status-note">نتيجتك الحالية: <b>' + h(S.summary(mine)) + '</b><br>نتيجة الحل النموذجي: <b>' + h(S.summary(st)) + '</b></div></div>';
+    if (!rev) return '';
+    let out = '';
+    if (S.best) {
+      const st = Object.assign(S.def(), JSON.parse(JSON.stringify(S.best))); const mine = Sims.state(e);
+      out += '<div class="sim-best"><div class="sim-best-h">✅ الحل النموذجي <span class="muted">— كشفه المدرب</span></div><div class="sim-grid"><div class="sim-form sim-ro">' + S.form(st, e.id + '-best', 'disabled') + '</div><div>' + S.live(st) + '</div></div>' +
+        '<div class="status-note">نتيجتك الحالية: <b>' + h(S.summary(mine)) + '</b><br>نتيجة الحل النموذجي: <b>' + h(S.summary(st)) + '</b></div></div>';
+    }
+    return out + Sims.whyHtml(e);
+  },
+  // فلسفة الحل: الفكرة وراء الإجابة المقترحة، والنقاط التي بُني عليها، والفخ الشائع
+  whyHtml(e) {
+    const w = typeof SIM_WHY !== 'undefined' ? SIM_WHY[e.sim] : null; if (!w) return '';
+    return '<div class="sim-why"><div class="sim-why-h">💡 فلسفة الحل والفكرة وراءه</div><p class="sim-why-idea">' + h(w.idea) + '</p><ul>' + w.points.map(x => '<li>' + h(x) + '</li>').join('') + '</ul>' + (w.trap ? '<div class="sim-trap"><b>⚠️ الفخ الشائع:</b> ' + h(w.trap) + '</div>' : '') + '</div>';
   },
   refresh(exId) { const e = Content.ex(exId); if (!e) return; const box = document.getElementById('simLive-' + exId); if (box) box.innerHTML = Sims.of(e).live(Sims.state(e)); },
   set(exId, path, val) {

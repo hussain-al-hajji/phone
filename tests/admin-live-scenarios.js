@@ -112,6 +112,16 @@ async function register(p, name) { await p.fill('#reg_name', name); await p.fill
     const after = await A.p.evaluate(() => document.querySelectorAll('.reveal-note').length); check('revealNotes_' + id, before === 0 && after === n && n >= 10);
     await D.p.click('.ex-live [data-act="reveal"]'); await D.p.waitForTimeout(500);
   }
+  // 7c2) فلسفة الحل: تظهر مع الحل النموذجي لكل محاكاة بعد الكشف فقط
+  const simIds = await D.p.evaluate(() => Content.allExercises().map(x => x.e).filter(e => e && e.format === 'sim').map(e => e.id)); const whyBad = [];
+  for (const id of simIds) {
+    await D.p.evaluate(id => Router.go('ex', { id }), id); await D.p.waitForTimeout(250); const before = await D.p.$$eval('.sim-why', x => x.length);
+    await D.p.click('.ex-live [data-act="reveal"]'); await D.p.waitForTimeout(400);
+    const r = await D.p.$eval('.sim-why', x => ({ n: x.querySelectorAll('li').length, trap: !!x.querySelector('.sim-trap'), idea: x.querySelector('.sim-why-idea').innerText.length })).catch(() => null);
+    await D.p.click('.ex-live [data-act="reveal"]'); await D.p.waitForTimeout(300);
+    if (before !== 0 || !r || r.n < 3 || !r.trap || r.idea < 30) whyBad.push(id);
+  }
+  R.whySims = simIds.length; check('philosophyAllSims', simIds.length >= 16 && !whyBad.length && (R.whyBad = whyBad, true));
   // 7d) تعطيل وضع المجموعات: تمارين المجموعات تصير فردية بلا اشتراط اختيار مجموعة
   await vis(A.p, 'a1e2'); check('groupPickerBefore', !!(await A.p.$('.group-btn')));
   await D.p.click('[data-go="admin"]'); await D.p.waitForTimeout(400);
