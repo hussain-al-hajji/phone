@@ -1717,7 +1717,7 @@ const DB = (function () {
     };
   }
   // ---- وضع المحاكاة المحلي (localStorage) — يطلق المراقبات بشكل متزامن فور التسجيل ----
-  const KEY = 'qdb_ecom_demo_db';
+  const KEY = 'demo_db';
   let tree = {};
   try { tree = JSON.parse(SafeLS.get(KEY) || '{}') || {}; } catch (e) { tree = {}; }
   const watchers = [];
@@ -6698,12 +6698,12 @@ async function copyEx(id) {
 }
 async function backupData() { // يُقرأ من الخادم مباشرة (لا من حالة الواجهة) حتى لا تُصدَّر نسخة ناقصة
   const g = k => DB.get(k);
-  return { app: 'qdb-ecom', version: 2, exportedAt: new Date().toISOString(), data: { content: await g('content'), added: await g('added'), visibility: await g('visibility'), enabled: await g('enabled'), order: await g('order'), media: await g('media'), site: await g('site'), settings: await g('settings'), removed: await g('removed') } };
+  return { app: 'phone-mobile', version: 2, exportedAt: new Date().toISOString(), data: { content: await g('content'), added: await g('added'), visibility: await g('visibility'), enabled: await g('enabled'), order: await g('order'), media: await g('media'), site: await g('site'), settings: await g('settings'), removed: await g('removed') } };
 }
 async function importBackup(file) {
   try {
     const obj = JSON.parse(await file.text());
-    if (!obj || obj.app !== 'qdb-ecom' || !obj.data) { UI.alert('الملف ليس نسخة احتياطية صالحة لهذا الموقع.'); return; }
+    if (!obj || obj.app !== 'phone-mobile' || !obj.data) { UI.alert('الملف ليس نسخة احتياطية صالحة لهذا الموقع.'); return; }
     const d = obj.data; const keys = ['media', 'content', 'added', 'visibility', 'enabled', 'order', 'removed'].filter(k => d[k] != null);
     const merge = ['site', 'settings'].filter(k => d[k] && typeof d[k] === 'object');
     const ok = await UI.confirm('استيراد نسخة المحتوى (' + h(obj.exportedAt || '') + '):<br>• تُستبدل: ' + (keys.map(h).join('، ') || '—') + '<br>• تُحدَّث عناصرها الموجودة في الملف فقط: ' + (merge.map(h).join('، ') || '—') + '<br>ما لا يحتويه الملف يبقى كما هو، ومشاركات المتدربين لا تتأثر. سيُنزَّل ملف بالمحتوى الحالي أولًا.', { danger: true, ok: 'تنزيل الحالي ثم الاستيراد' });
@@ -6722,7 +6722,7 @@ async function exportAll() {
   // كل عقدة تُقرأ منفصلة: تعذر قراءة عقدة واحدة لا يُسقط النسخة كلها
   const skipped = [];
   try { for (let i = 0; i < ALL_NODES.length; i++) { pm.set(i + 1, ALL_NODES.length, ALL_NODES[i]); try { out[ALL_NODES[i]] = await DB.get(ALL_NODES[i]); } catch (e) { skipped.push(ALL_NODES[i]); } }
-    downloadBlob(new Blob([JSON.stringify({ app: 'qdb-ecom', kind: 'full', exportedAt: new Date().toISOString(), skipped, data: out })], { type: 'application/json' }), 'نسخة كاملة لقاعدة البيانات ' + dayKey(DB.now()) + '.json'); pm.close();
+    downloadBlob(new Blob([JSON.stringify({ app: 'phone-mobile', kind: 'full', exportedAt: new Date().toISOString(), skipped, data: out })], { type: 'application/json' }), 'نسخة كاملة لقاعدة البيانات ' + dayKey(DB.now()) + '.json'); pm.close();
     if (skipped.length) UI.alert('نُزّلت النسخة، لكن تعذرت قراءة: <b dir="ltr">' + skipped.map(h).join('، ') + '</b> — غالبًا لأن القواعد المنشورة أقدم من هذه النسخة.'); else UI.toast('✅ نُزّلت النسخة الكاملة');
   } catch (e) { pm.close(); UI.alert('تعذر التنزيل: ' + h(e.message || e)); }
 }
@@ -6841,7 +6841,7 @@ document.addEventListener('click', async ev => {
     case 'pv-reset': { if (await UI.confirm('استرجاع النص الافتراضي؟', { ok: 'استرجاع' })) DB.remove('site/privacy'); break; }
     case 'users-csv': exportUsersCsv(); break;
     case 'bk-now': { const ok = await autoBackup(true); UI.toast(ok ? '✅ أُخذت نسخة احتياطية الآن' : 'تعذر أخذ النسخة'); break; }
-    case 'bk-dl': { const d = t.getAttribute('data-d'); const b = await DB.get('backups/' + d); downloadBlob(new Blob([JSON.stringify({ app: 'qdb-ecom-data', day: d, data: b && b.data }, null, 2)], { type: 'application/json' }), 'نسخة مدخلات المتدربين ' + d + '.json'); break; }
+    case 'bk-dl': { const d = t.getAttribute('data-d'); const b = await DB.get('backups/' + d); downloadBlob(new Blob([JSON.stringify({ app: 'phone-mobile-data', day: d, data: b && b.data }, null, 2)], { type: 'application/json' }), 'نسخة مدخلات المتدربين ' + d + '.json'); break; }
     case 'bk-restore': restoreBackup(t.getAttribute('data-d')); break;
     case 'delete-me': deleteMyData(); break;
     case 'congrats-pdf': buildCongratsPdf(Me.data.name, t.getAttribute('data-kind') || 'congrats'); break;
@@ -7104,7 +7104,7 @@ async function restoreBackup(day) {
   const cur = await snapshotData(); const cnt = d => ({ u: Object.keys(d.users || {}).length, p: Object.keys(d.posts || {}).reduce((n, k) => n + Object.keys(d.posts[k] || {}).length, 0) });
   const nb = cnt(b.data), nc = cnt(cur);
   if (!(await UI.confirm('استعادة مدخلات المتدربين من نسخة <b class="num">' + h(day) + '</b>:<br>• في النسخة: <b class="num">' + nb.u + '</b> مسجّل و<b class="num">' + nb.p + '</b> مشاركة<br>• الحالي الآن: <b class="num">' + nc.u + '</b> مسجّل و<b class="num">' + nc.p + '</b> مشاركة<br><br>سيُنزَّل ملف بالبيانات الحالية تلقائيًا قبل الاستعادة لتتمكن من الرجوع. المحتوى وتعديلاته لا تتأثر.', { danger: true, ok: 'تنزيل الحالي ثم الاستعادة' }))) return;
-  downloadBlob(new Blob([JSON.stringify({ app: 'qdb-ecom', kind: 'trainee-data', exportedAt: new Date().toISOString(), data: cur }, null, 1)], { type: 'application/json' }), 'مدخلات المتدربين قبل الاستعادة ' + dayKey(DB.now()) + '.json');
+  downloadBlob(new Blob([JSON.stringify({ app: 'phone-mobile', kind: 'trainee-data', exportedAt: new Date().toISOString(), data: cur }, null, 1)], { type: 'application/json' }), 'مدخلات المتدربين قبل الاستعادة ' + dayKey(DB.now()) + '.json');
   const upd = {}; BACKUP_PATHS.forEach(k => { upd[k] = b.data[k] || null; }); await DB.update('', upd, { allowTopLevel: true }); UI.toast('✅ تمت الاستعادة');
 }
 

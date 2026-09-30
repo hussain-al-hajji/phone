@@ -174,7 +174,7 @@ const DB = (function () {
     };
   }
   // ---- وضع المحاكاة المحلي (localStorage) — يطلق المراقبات بشكل متزامن فور التسجيل ----
-  const KEY = 'qdb_ecom_demo_db';
+  const KEY = 'demo_db';
   let tree = {};
   try { tree = JSON.parse(SafeLS.get(KEY) || '{}') || {}; } catch (e) { tree = {}; }
   const watchers = [];

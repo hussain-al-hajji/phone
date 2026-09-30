@@ -5,7 +5,7 @@ const MOCK = fs.readFileSync(path.join(__dirname, 'fbmock.js'), 'utf8');
 const RULES = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'database.rules.json'), 'utf8'));
 const U = 'file://' + path.resolve(__dirname, '..', 'index.html');
 const DATA = { admins: { adm1: true }, site: { home: { heroTitle: 'عنوان' } }, users: { u1: { name: 'سارة', member: 1001, ts: 1 } }, meta: { memberCounter: 1001 }, settings: { attendance: { open: { 1: true } } } };
-const USERS = { 'trainer@qdb.test': { pass: 'Secret#123', uid: 'adm1' }, 'someone@qdb.test': { pass: 'pw123456', uid: 'u9' } };
+const USERS = { 'trainer@phone.test': { pass: 'Secret#123', uid: 'adm1' }, 'someone@phone.test': { pass: 'pw123456', uid: 'u9' } };
 async function open(b, hash, extra) {
   const ctx = await b.newContext({ viewport: { width: 1280, height: 850 } }); const p = await ctx.newPage(); const net = { real: 0 }; const errs = [];
   p.on('pageerror', e => errs.push(e.message));
@@ -56,11 +56,11 @@ const tryW = (p, fnSrc) => p.evaluate(async src => { try { await (new Function('
     await p.click('[data-act="admin-enter"]'); await p.waitForTimeout(300);
     R.login = { emailForm: !!(await p.$('#alEmail')), noPasscodePrompt: !(await p.$('.modal [data-in][type="password"]:not(#alPass)')) };
     R.login.googleBtn = !!(await p.$('[data-google]')); await p.click('.al-email summary');
-    await p.fill('#alEmail', 'trainer@qdb.test'); await p.fill('#alPass', 'wrong'); await p.click('.modal [data-ok]'); await p.waitForTimeout(300);
+    await p.fill('#alEmail', 'trainer@phone.test'); await p.fill('#alPass', 'wrong'); await p.click('.modal [data-ok]'); await p.waitForTimeout(300);
     R.login.wrongPassMsg = await p.$eval('#alErr', e => e.textContent);
-    await p.fill('#alEmail', 'someone@qdb.test'); await p.fill('#alPass', 'pw123456'); await p.click('.modal [data-ok]'); await p.waitForTimeout(400);
+    await p.fill('#alEmail', 'someone@phone.test'); await p.fill('#alPass', 'pw123456'); await p.click('.modal [data-ok]'); await p.waitForTimeout(400);
     R.login.notAdminMsg = (await p.$eval('#alErr', e => e.textContent)).slice(0, 60); R.login.notAdminInAdmin = await p.evaluate(() => Admin.ok());
-    await p.fill('#alEmail', 'trainer@qdb.test'); await p.fill('#alPass', 'Secret#123'); await p.click('.modal [data-ok]'); await p.waitForTimeout(700);
+    await p.fill('#alEmail', 'trainer@phone.test'); await p.fill('#alPass', 'Secret#123'); await p.click('.modal [data-ok]'); await p.waitForTimeout(700);
     R.login.adminView = await p.evaluate(() => Router.cur.view === 'home' && Admin.ok() && !!document.querySelector('.top-actions [data-go="admin"]')); // يدخل المدرب إلى المنصة أولًا وزر «لوحة التحكم» أعلى الصفحة
     R.adminCan = { hideSection: await tryW(p, "() => DB.set('visibility/home_tools', false)"), editSite: await tryW(p, "() => DB.set('site/home/heroTitle', 'عنوان جديد')"), backup: await tryW(p, "() => autoBackup(true)") };
     R.adminCan.serverHidden = (await S(p, 'visibility/home_tools')) === false;

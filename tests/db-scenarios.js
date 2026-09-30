@@ -36,10 +36,10 @@ const S = (p, path) => p.evaluate(path => { let n = window.__mock.server; for (c
   if (run('0')) { // مكتبة Firebase لم تُحمَّل (شبكة ضعيفة/حجب)
     const { ctx, p, net } = await open(b, { blockLib: true, guest: true }); await p.waitForTimeout(1500);
     const t = await txt(p);
-    R['0_lib_blocked'] = { dbReal: await p.evaluate(() => DB.real), warningShown: /تعذّر|تعذر الاتصال|غير متصل|الاتصال/.test(t), localDbKey: await p.evaluate(() => !!localStorage.getItem('phone:qdb_ecom_demo_db')), realNet: net.real };
+    R['0_lib_blocked'] = { dbReal: await p.evaluate(() => DB.real), warningShown: /تعذّر|تعذر الاتصال|غير متصل|الاتصال/.test(t), localDbKey: await p.evaluate(() => !!localStorage.getItem('phone:demo_db')), realNet: net.real };
     // المتدرب يسجّل ويجيب — أين تذهب البيانات؟
     R['0_lib_blocked'].writeResult = await p.evaluate(async () => { try { await DB.set('posts/a1e1/uX', { text: 'x' }); return 'accepted'; } catch (e) { return 'rejected: ' + e.message; } });
-    R['0_lib_blocked'].answerSavedWhere = await p.evaluate(() => (JSON.parse(localStorage.getItem('phone:qdb_ecom_demo_db') || '{}').posts ? 'localStorage فقط' : 'لم يُكتب محليًا'));
+    R['0_lib_blocked'].answerSavedWhere = await p.evaluate(() => (JSON.parse(localStorage.getItem('phone:demo_db') || '{}').posts ? 'localStorage فقط' : 'لم يُكتب محليًا'));
     R['0_lib_blocked'].warnAfterWrite = /تعذّر|تعذر|غير متصل|لم تُحفظ/.test(await txt(p));
     await ctx.close();
   }
@@ -94,7 +94,7 @@ const S = (p, path) => p.evaluate(path => { let n = window.__mock.server; for (c
   }
   if (run('f')) { // (و) استيراد نسخة محتوى قديمة لا تحوي site/settings كاملة
     const { ctx, p } = await open(b, { cfg: { delayFirst: 200 }, admin: true, hash: '#v=admin' }); await p.waitForTimeout(1500);
-    await p.evaluate(async () => { const f = new File([JSON.stringify({ app: 'qdb-ecom', version: 1, exportedAt: 'old', data: { visibility: { home_x: false } } })], 'b.json'); setTimeout(() => { const ok = document.querySelector('.modal [data-ok]'); if (ok) ok.click(); }, 300); await importBackup(f); });
+    await p.evaluate(async () => { const f = new File([JSON.stringify({ app: 'phone-mobile', version: 1, exportedAt: 'old', data: { visibility: { home_x: false } } })], 'b.json'); setTimeout(() => { const ok = document.querySelector('.modal [data-ok]'); if (ok) ok.click(); }, 300); await importBackup(f); });
     await p.waitForTimeout(800);
     R.f = { monitorTokenAfterImport: await S(p, 'settings/monitor/token'), siteAfterImport: JSON.stringify(await S(p, 'site')), cohort: JSON.stringify(await S(p, 'settings/cohort')) };
     await ctx.close();
