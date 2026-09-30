@@ -698,15 +698,8 @@ font{background:transparent!important;box-shadow:none!important}
 .present .lb-grid .card,.present .feed,.present .table-wrap{background:rgba(255,255,255,.95);color:var(--ink)}
 @media (max-width:760px){.pr-join{grid-template-columns:1fr;justify-items:center}}
 
-/* ===== سهولة الوصول: التباين العالي، حجم الخط، تقليل الحركة ===== */
-html[data-contrast="high"]{--ink:#000;--ink-2:#111;--ink-3:#2B2B2B;--line:#6B6B6B}
-html[data-contrast="high"] a{text-decoration:underline}
-html[data-contrast="high"] :focus-visible{outline:3px solid #FFB000!important;outline-offset:2px}
-html[data-contrast="high"] .muted{color:var(--ink-3)!important}
-html[data-fs="sm"] body{zoom:.92}html[data-fs="lg"] body{zoom:1.12}html[data-fs="xl"] body{zoom:1.25}
+/* ===== سهولة الوصول: تقليل الحركة (حسب إعداد الجهاز) ===== */
 html[data-motion="reduce"] *,html[data-motion="reduce"] *::before,html[data-motion="reduce"] *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
-.prefs-grid{display:flex;flex-direction:column;gap:14px;margin-top:10px;font-family:var(--f-ui)}
-.prefs-grid .sim-seg label{padding:8px 14px}
 .admin-band,.admin-top{flex-wrap:wrap}
 .pr-sel{min-width:0;flex:1 1 180px;max-width:100%}
 

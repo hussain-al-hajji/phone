@@ -35,11 +35,11 @@ async function register(p, name) { await p.fill('#reg_name', name); await p.fill
   // 1) صفحة الدخول: ترجمة + Aa فقط، وأيقونة المدرب في الأسفل
   const A = await visitor();
   R.loginTop = await topbar(A.p);
-  check('loginTopHasNoGear', R.loginTop.join(',') === 'translate,prefs');
+  check('loginTopHasNoGear', R.loginTop.join(',') === 'translate');
   check('trainerIconOnLogin', !!(await A.p.$('.login-page .trainer-btn[data-act="admin-enter"]')));
   // 2) الزائر: ترجمة + Aa + تسجيل دخول، والتمارين مغلقة، وزر الدخول يعيده لصفحة الدخول
   await A.p.click('[data-act="guest"]'); await A.p.waitForTimeout(300);
-  R.guestTop = await topbar(A.p); check('guestTop', R.guestTop.join(',') === 'translate,prefs,guest-login:تسجيل دخول');
+  R.guestTop = await topbar(A.p); check('guestTop', R.guestTop.join(',') === 'translate,guest-login:تسجيل دخول');
   await A.p.evaluate(() => Router.go('ex', { id: 'a1e1' })); await A.p.waitForTimeout(400);
   check('guestLocked', !!(await A.p.$('.locked-note')));
   let t = await server(A.p); check('guestPresence', Object.values(at(t, 'presence/a1e1') || {}).some(x => x.g === true));
@@ -48,7 +48,7 @@ async function register(p, name) { await p.fill('#reg_name', name); await p.fill
   t = await server(A.p); check('guestPresenceCleared', !Object.keys(at(t, 'presence/a1e1') || {}).length);
   // 3) المتدرب أ: حسابي + ترجمة + Aa + خروج (أيقونات بلا نص)
   const uidA = await register(A.p, 'سارة المتدربة');
-  R.traineeTop = await topbar(A.p); check('traineeTop', R.traineeTop.join(',') === 'account,translate,prefs,logout');
+  R.traineeTop = await topbar(A.p); check('traineeTop', R.traineeTop.join(',') === 'account,translate,logout');
   await A.p.evaluate(() => Router.go('ex', { id: 'a1e1' })); await A.p.waitForTimeout(500);
   // 4) زائر آخر على نفس التمرين
   const G = await visitor(); await G.p.click('[data-act="guest"]'); await G.p.waitForTimeout(300); await G.p.evaluate(() => Router.go('ex', { id: 'a1e1' })); await G.p.waitForTimeout(500);
@@ -62,7 +62,7 @@ async function register(p, name) { await p.fill('#reg_name', name); await p.fill
   const D = await visitor({ cfg: { googleUser: { uid: 'adm1', email: 'trainer@x.com' } } });
   await D.p.click('.trainer-btn'); await D.p.waitForTimeout(300); await D.p.click('[data-google]'); await D.p.waitForTimeout(1000);
   R.adminView = await D.p.evaluate(() => Router.cur.view); check('adminLandsOnPlatform', R.adminView === 'home');
-  R.adminTop = await topbar(D.p); check('adminTop', R.adminTop.join(',') === 'admin:لوحة التحكم,translate,prefs,admin-exit');
+  R.adminTop = await topbar(D.p); check('adminTop', R.adminTop.join(',') === 'admin:لوحة التحكم,translate,admin-exit');
   await D.p.evaluate(() => Router.go('ex', { id: 'a1e1' })); await D.p.waitForTimeout(500);
   check('adminNotLocked', !(await D.p.$('.locked-note')) && !!(await D.p.$('#ans-a1e1')));
   await D.p.waitForTimeout(900); R.chip = await D.p.$eval('.ex-live .live-chip', e => e.innerText.replace(/\s+/g, ' ').trim()); check('chipCount2', /^2 /.test(R.chip));
@@ -178,6 +178,7 @@ async function register(p, name) { await p.fill('#reg_name', name); await p.fill
   // 11) خروج المدرب
   await D.p.click('.top-actions [data-act="admin-exit"]'); await D.p.waitForTimeout(200); await okModal(D.p); await D.p.waitForTimeout(700);
   check('adminLoggedOut', await D.p.evaluate(() => !Admin.ok()) && !!(await D.p.$('.login-page')));
+  check('noAaButtonAnywhere', await A.p.evaluate(() => !document.querySelector('[data-act="prefs"]') && typeof Prefs === 'undefined') && await D.p.evaluate(() => !document.querySelector('[data-act="prefs"]')));
   R.errors = [A, G, D].map(x => x.errs).flat(); check('noPageErrors', !R.errors.length);
   console.log(JSON.stringify(R, null, 1)); console.log(fail.length ? 'FAIL ' + fail.join(', ') : 'PASS admin/live scenarios');
   await browser.close(); process.exit(fail.length ? 1 : 0);

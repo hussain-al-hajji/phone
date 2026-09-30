@@ -392,7 +392,6 @@ document.addEventListener('click', async ev => {
     }
     case 'content-pdf': buildContentPdf(); break;
     case 'translate': Translate.menu(); break;
-    case 'prefs': Prefs.menu(); break;
     case 'save-card': saveMemberCard(Object.assign({}, Me.data, { member: Me.data.member || ((Store.users[Me.uid()] || {}).member) })); break;
     case 'my-filter': UIState.myFilter = t.getAttribute('data-k'); App.render(); break;
     case 'checkin': {
